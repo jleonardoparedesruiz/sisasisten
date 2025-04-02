@@ -25,6 +25,7 @@ function crearHojasYColumnas() {
       },
       {
         nombre: "BDregistros",
+        // Se agregó la columna "Lugar" después de "Ubicación"
         columnas: [
           "DNI",
           "Nombre",
@@ -33,6 +34,7 @@ function crearHojasYColumnas() {
           "Tipo",
           "Observaciones",
           "Ubicación",
+          "Lugar",
           "Link Imagen"
         ]
       },
@@ -62,6 +64,15 @@ function crearHojasYColumnas() {
           ["Viernes",   "08:00", "17:00", "12:00", "13:00", 15],
           ["Sabado",    "08:00", "13:00", "00:00", "00:00", 15],
           ["Domingo",   "08:00", "13:00", "00:00", "00:00", 15]
+        ]
+      },
+      {
+        // Nueva hoja para geoballas, que contendrá los puntos autorizados
+        nombre: "geoballa",
+        columnas: [
+          "Lugar",       // Nombre del centro autorizado
+          "Ubicacion",   // Coordenadas (latitud, longitud)
+          "Radio (m)"    // Radio de tolerancia en metros
         ]
       }
     ];
