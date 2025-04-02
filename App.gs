@@ -370,7 +370,8 @@ function verificarGeoballa(ubicacion) {
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
     var data = geoSheet.getDataRange().getValues(); // Incluye encabezado
-    // Se asume: Columna A: Lugar, B: Ubicacion ("lat, lng"), C: Radio (m)
+    
+    // Recorremos cada geoballa
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       var lugar = row[0];
@@ -382,10 +383,18 @@ function verificarGeoballa(ubicacion) {
       var latGeo = parseFloat(partsGeo[0].trim());
       var lngGeo = parseFloat(partsGeo[1].trim());
       if (isNaN(latGeo) || isNaN(lngGeo) || isNaN(radio)) continue;
+      
+      // Calcular la distancia usando la fórmula de Haversine
       var distance = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
-      if (distance <= radio) {
-        return lugar;
-      }
+      
+      // Aquí agregamos el log para depurar
+    Logger.log("Usuario: lat = " + latUser + ", lng = " + lngUser);
+Logger.log("Geoballa " + lugar + ": lat = " + latGeo + ", lng = " + lngGeo);
+Logger.log("Distancia calculada = " + distance + " m, Radio permitido = " + radio + " m");
+
+if (distance <= radio) {
+  return lugar;
+}
     }
     return null;
   } catch (error) {
@@ -393,6 +402,7 @@ function verificarGeoballa(ubicacion) {
     return null;
   }
 }
+
 
 function calcularDistancia(lat1, lng1, lat2, lng2) {
   var R = 6371000; // Radio de la Tierra en metros
