@@ -952,37 +952,61 @@
       }
     }
 
-    function capturarFotoYRegistrar() {
-      const video = document.getElementById("video");
-      if (!video) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0);
-      canvas.toBlob(blob => {
-        const reader = new FileReader();
-        reader.onloadend = function() {
-          const base64Img = reader.result.split(',')[1];
-          if (ubicacionActual === "No disponible" || ubicacionActual === "No soportado" || ubicacionActual === "") {
-            showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
-            stopCamera();
-            return;
+function capturarFotoYRegistrar() {
+  const video = document.getElementById("video");
+  if (!video) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(blob => {
+    const reader = new FileReader();
+    reader.onloadend = function () {
+      const base64Img = reader.result.split(',')[1];
+
+      if (!ubicacionActual || ubicacionActual === "No disponible" || ubicacionActual === "No soportado") {
+        showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
+        stopCamera();
+        return;
+      }
+
+      // Verificamos si está dentro de alguna geoballa
+      google.script.run.withSuccessHandler(function (geoResult) {
+        if (!geoResult) {
+          showFancyAlert("No se encontró ninguna zona geográfica autorizada para marcar.");
+          stopCamera();
+          return;
+        }
+
+        // Si está fuera del área
+        if (!geoResult.dentro) {
+          showFancyAlert(`Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`);
+          stopCamera();
+          return;
+        }
+
+        // Si está dentro, procedemos a registrar asistencia
+        const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
+
+        google.script.run.withSuccessHandler(function (respuesta) {
+          if (respuesta.lugar) {
+            showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${respuesta.lugar}`);
+          } else {
+            showFancyAlert(respuesta.mensaje);
           }
-          const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
-          google.script.run.withSuccessHandler(function(respuesta) {
-            if (respuesta.lugar) {
-              showFancyAlert("Se registró su " + tipoEvento.toLowerCase() + " en: " + respuesta.lugar);
-            } else {
-              showFancyAlert(respuesta.mensaje);
-            }
-            stopCamera();
-            cargarMarcacionesHoy();
-          }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
-        };
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg');
-    }
+          stopCamera();
+          cargarMarcacionesHoy();
+        }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
+
+      }).verificarGeoballa(ubicacionActual);
+    };
+    reader.readAsDataURL(blob);
+  }, 'image/jpeg');
+}
+
 
     function stopCamera() {
       if (streamActivo) {
