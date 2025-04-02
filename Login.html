@@ -53,7 +53,7 @@
       width: 90%;
       max-width: 400px;
       text-align: center;
-      margin: 40px auto; /* margen vertical */
+      margin: 40px auto;
     }
     .admin-panel {
       max-width: 1100px;
@@ -169,7 +169,7 @@
       max-height: 300px;
     }
     
-    /* Etiquetas "coquetas" para Entrada y Salida */
+    /* Etiquetas para Entrada y Salida */
     .marcacion-labels {
       margin: 20px 0;
     }
@@ -321,7 +321,7 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       border-radius: 8px;
       overflow: hidden;
-      table-layout: auto; /* Permite que se ajuste al contenido */
+      table-layout: auto;
     }
     .tabla-usuarios thead {
       background-color: #e53935;
@@ -330,12 +330,11 @@
     .tabla-usuarios th, .tabla-usuarios td {
       padding: 10px;
       font-size: 13px;
-      text-align: left; /* <--- Alineación a la izquierda */
+      text-align: left;
       border-bottom: 1px solid #eee;
       vertical-align: middle;
-      /* white-space: nowrap; // Si deseas que NO corte texto, descomenta */
     }
-    /* Ajuste de la columna Acciones */
+    /* Columna Acciones */
     .tabla-usuarios th:nth-child(1),
     .tabla-usuarios td:nth-child(1) {
       min-width: 90px;
@@ -350,7 +349,7 @@
       background: none;
       cursor: pointer;
       font-size: 16px;
-      margin-right: 4px; /* <--- Separación pequeña */
+      margin-right: 4px;
     }
     .tabla-usuarios .btn-icon:last-child {
       margin-right: 0;
@@ -490,7 +489,57 @@
     }
     
     /* ==============================
-       11. Media Queries
+       11. Sección Geoballas (Administración)
+       ============================== */
+    .geoballas-section {
+      display: none;
+      padding: 20px;
+      text-align: left;
+    }
+    .geoballas-section h4 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .geoballas-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    .geoballas-section th, .geoballas-section td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      font-size: 13px;
+      text-align: left;
+    }
+    .geoballas-section .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 4px;
+    }
+    .geoballas-section .btn-icon.edit {
+  color: #007bff; /* Azul, puedes cambiarlo */
+}
+
+.geoballas-section .btn-icon.delete {
+  color: #e53935; /* Rojo, puedes cambiarlo */
+}
+.geoballas-section .btn-icon:hover {
+  opacity: 0.8; /* Efecto de oscurecer un poco al pasar el mouse */
+}
+    /* Contenedor para el mapa interactivo */
+    #map {
+      width: 100%;
+      height: 400px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+    }
+    
+    /* ==============================
+       12. Media Queries
        ============================== */
     @media (max-width: 800px) {
       .form-usuarios .row-fields {
@@ -574,7 +623,7 @@
       </button>
     </div>
 
-    <!-- Etiquetas coquetas para Entrada y Salida -->
+    <!-- Etiquetas para Entrada y Salida -->
     <div class="marcacion-labels">
       <div class="entrada-label" id="entradaLabel">
         <i class="fa-solid fa-door-open"></i>
@@ -602,6 +651,7 @@
         <a onclick="reporteIndividual()">Reporte Individual</a>
         <a onclick="mostrarEstadisticas()">Estadísticas</a>
         <a onclick="mostrarUsersSection()">Usuarios</a>
+        <a onclick="mostrarGeoballas()">Geoballas</a>
         <a onclick="cerrarSesion()">
           <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
         </a>
@@ -619,7 +669,7 @@
           <div class="row-fields">
             <div style="flex:1; min-width:200px;">
               <label for="usuarioDni">USUARIO (DNI)</label>
-              <input type="text" id="usuarioDni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="^\\d{8}$" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
+              <input type="text" id="usuarioDni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="^\d{8}$" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)">
             </div>
             <div style="flex:1; min-width:200px;">
               <label for="nombreCompleto">Nombre Completo</label>
@@ -639,7 +689,7 @@
             </div>
             <div style="flex:1; min-width:150px;">
               <label for="contrasenaUsuario">Contraseña</label>
-              <input type="text" id="contrasenaUsuario" placeholder="8 dígitos numéricos" pattern="^\\d{8}$">
+              <input type="text" id="contrasenaUsuario" placeholder="8 dígitos numéricos" pattern="^\d{8}$">
             </div>
             <div style="flex:1; min-width:100px;">
               <label for="nivel">Nivel</label>
@@ -679,6 +729,38 @@
         </div>
       </div>
       <!-- Fin Sección Usuarios -->
+      
+      <!-- Sección Geoballas -->
+      <div class="geoballas-section" id="geoballasSection">
+        <h4><i class="fa-solid fa-map-location-dot"></i> Geoballas</h4>
+        <table class="tabla-geoballas" id="tablaGeoballas">
+          <thead>
+            <tr>
+              <th>Lugar</th>
+              <th>Ubicación</th>
+              <th>Radio (m)</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyGeoballas"></tbody>
+        </table>
+        <h5>Agregar/Editar Geoballa</h5>
+        <div class="input-group">
+          <input type="text" id="geoballaLugar" placeholder="Lugar">
+        </div>
+        <!-- El campo de Ubicación se llenará automáticamente desde el mapa -->
+        <div class="input-group">
+          <input type="text" id="geoballaUbicacion" placeholder="Ubicación (lat, lng)" readonly>
+        </div>
+        <div class="input-group">
+          <input type="number" id="geoballaRadio" placeholder="Radio (m)">
+        </div>
+        <!-- Contenedor para el mapa interactivo -->
+        <div id="map"></div>
+        <button class="btn-blue" onclick="guardarGeoballa()">Guardar Geoballa</button>
+      </div>
+      <!-- Fin Sección Geoballas -->
+      
     </div>
   </div>
 
@@ -796,7 +878,7 @@
       }).obtenerNivelUsuario();
     }
 
-    /************** MARCACIÓN Y REGISTRO DE ASISTENCIA **************/
+    /************** MARCACIONES Y REGISTRO DE ASISTENCIA **************/
     function cargarMarcacionesHoy() {
       google.script.run.withSuccessHandler(function(registros) {
         const entradaDiv = document.getElementById("entradaLabel");
@@ -889,7 +971,11 @@
           }
           const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
           google.script.run.withSuccessHandler(function(respuesta) {
-            showFancyAlert(respuesta.mensaje);
+            if (respuesta.lugar) {
+              showFancyAlert("Se registró su " + tipoEvento.toLowerCase() + " en: " + respuesta.lugar);
+            } else {
+              showFancyAlert(respuesta.mensaje);
+            }
             stopCamera();
             cargarMarcacionesHoy();
           }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
@@ -914,17 +1000,32 @@
       document.getElementById("mainContent").classList.remove("visible");
       document.getElementById("mainContent").classList.add("hidden");
       setTimeout(() => {
+        document.getElementById("loginDiv").style.display = "none";
         document.getElementById("mainContent").style.display = "none";
         document.getElementById("adminPanel").style.display = "block";
         document.getElementById("adminPanel").classList.add("visible");
         document.getElementById("usersSection").style.display = "none";
+        document.getElementById("geoballasSection").style.display = "none";
       }, 300);
     }
 
     function mostrarUsersSection() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "block";
+      document.getElementById("geoballasSection").style.display = "none";
       google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
+    }
+
+    // Función para mostrar la sección de Geoballas
+    function mostrarGeoballas() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "block";
+      google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
+      // Reinicializar el mapa para geoballas
+      if (typeof initMap === "function") {
+        initMap();
+      }
     }
 
     function renderizarUsuarios(lista) {
@@ -950,42 +1051,35 @@
         tdAcciones.appendChild(btnDelete);
         tr.appendChild(tdAcciones);
 
-        // Nombre Completo
+        // Resto de columnas
         const tdNombre = document.createElement("td");
         tdNombre.textContent = usuario.nombre || "";
         tr.appendChild(tdNombre);
 
-        // USUARIO (DNI)
         const tdDni = document.createElement("td");
         tdDni.textContent = usuario.dni || "";
         tr.appendChild(tdDni);
 
-        // Contraseña
         const tdContra = document.createElement("td");
         tdContra.textContent = usuario.contrasena || "";
         tr.appendChild(tdContra);
 
-        // Área
         const tdArea = document.createElement("td");
         tdArea.textContent = usuario.area || "";
         tr.appendChild(tdArea);
 
-        // Cargo
         const tdCargo = document.createElement("td");
         tdCargo.textContent = usuario.cargo || "";
         tr.appendChild(tdCargo);
 
-        // Email
         const tdEmail = document.createElement("td");
         tdEmail.textContent = usuario.email || "";
         tr.appendChild(tdEmail);
 
-        // Nivel
         const tdNivel = document.createElement("td");
         tdNivel.textContent = usuario.nivel || 0;
         tr.appendChild(tdNivel);
 
-        // HorasExtras
         const tdHoras = document.createElement("td");
         tdHoras.textContent = usuario.horasExtras || 0;
         tr.appendChild(tdHoras);
@@ -994,7 +1088,43 @@
       });
     }
 
-    // Confirmar Edición con FancyConfirm
+    // Función para renderizar la lista de geoballas
+    function renderizarGeoballas(geoballas) {
+      const tbody = document.getElementById("tbodyGeoballas");
+      tbody.innerHTML = "";
+      geoballas.forEach(geo => {
+        const tr = document.createElement("tr");
+        
+        const tdLugar = document.createElement("td");
+        tdLugar.textContent = geo.lugar || "";
+        tr.appendChild(tdLugar);
+        
+        const tdUbicacion = document.createElement("td");
+        tdUbicacion.textContent = geo.ubicacion || "";
+        tr.appendChild(tdUbicacion);
+        
+        const tdRadio = document.createElement("td");
+        tdRadio.textContent = geo.radio || "";
+        tr.appendChild(tdRadio);
+        
+        const tdAcciones = document.createElement("td");
+        const btnEdit = document.createElement("button");
+        btnEdit.classList.add("btn-icon", "edit");
+        btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+        btnEdit.onclick = () => confirmarEdicionGeoballa(geo);
+        const btnDelete = document.createElement("button");
+        btnDelete.classList.add("btn-icon", "delete");
+        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        btnDelete.onclick = () => eliminarGeoballa(geo.lugar);
+        tdAcciones.appendChild(btnEdit);
+        tdAcciones.appendChild(btnDelete);
+        tr.appendChild(tdAcciones);
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Funciones para confirmar, editar y eliminar usuarios y geoballas
     function confirmarEdicionUsuario(usuario) {
       showFancyConfirm(
         `¿Está seguro de que desea editar al usuario con DNI: ${usuario.dni}?`,
@@ -1006,6 +1136,19 @@
         }
       );
     }
+    function confirmarEdicionGeoballa(geo) {
+  showFancyConfirm(
+    `¿Está seguro de que desea editar la geoballa para el lugar: ${geo.lugar}?`,
+    () => {
+      // Si el usuario confirma
+      editarGeoballa(geo);
+    },
+    () => {
+      // Si el usuario cancela
+      console.log("Edición de geoballa cancelada");
+    }
+  );
+}
 
     function editarUsuario(usuario) {
       document.getElementById("usuarioDni").value = usuario.dni;
@@ -1018,7 +1161,6 @@
       document.getElementById("horasExtras").value = usuario.horasExtras;
     }
 
-    // Eliminar Usuario con FancyConfirm
     function eliminarUsuario(dni) {
       showFancyConfirm(
         `¿Está seguro de que desea eliminar al usuario con DNI: ${dni}?\nEsta acción no se puede deshacer.`,
@@ -1036,6 +1178,64 @@
           console.log("Eliminación cancelada");
         }
       );
+    }
+
+    // Funciones para geoballas
+function editarGeoballa(geo) {
+  document.getElementById("geoballaLugar").value = geo.lugar;
+  document.getElementById("geoballaUbicacion").value = geo.ubicacion;
+  document.getElementById("geoballaRadio").value = geo.radio;
+  
+  if (map) {
+    const parts = geo.ubicacion.split(",");
+    const lat = parseFloat(parts[0].trim());
+    const lng = parseFloat(parts[1].trim());
+    const newPos = { lat, lng };
+
+    // Si no existe un marker global, créalo
+    if (!marker) {
+      marker = new google.maps.Marker({
+        position: newPos,
+        map: map,
+      });
+    } else {
+      // Si ya existe, solo mueve el marcador
+      marker.setPosition(newPos);
+    }
+
+    // Centrar el mapa en la nueva posición
+    map.setCenter(newPos);
+  }
+}
+
+    function eliminarGeoballa(lugar) {
+      showFancyConfirm(
+        `¿Está seguro de que desea eliminar la geoballa para el lugar: ${lugar}?`,
+        () => {
+          google.script.run.withSuccessHandler(function(res) {
+            showFancyAlert(res.mensaje);
+            mostrarGeoballas();
+          }).eliminarGeoballa(lugar);
+        },
+        () => {
+          console.log("Eliminación de geoballa cancelada");
+        }
+      );
+    }
+
+    function guardarGeoballa() {
+      const lugar = document.getElementById("geoballaLugar").value.trim();
+      const ubicacion = document.getElementById("geoballaUbicacion").value.trim();
+      const radio = document.getElementById("geoballaRadio").value.trim();
+      if (!lugar || !ubicacion || !radio) {
+        showFancyAlert("Por favor, complete todos los campos de la geoballa.");
+        return;
+      }
+      const geoObj = { lugar, ubicacion, radio: parseFloat(radio) };
+      google.script.run.withSuccessHandler(function(res) {
+        showFancyAlert(res.mensaje);
+        mostrarGeoballas();
+      }).guardarGeoballa(geoObj);
     }
 
     function limpiarFormulario() {
@@ -1095,7 +1295,7 @@
         .guardarUsuarioEnHoja(userObj);
     }
 
-    /************** CERRAR SESIÓN **************/
+    /************** CIERRE DE SESIÓN **************/
     function cerrarSesion() {
       google.script.run.withSuccessHandler(() => {
         document.getElementById("adminPanel").classList.remove("visible");
@@ -1151,6 +1351,7 @@
       document.getElementById("adminPanel").classList.remove("hidden");
       document.getElementById("adminPanel").classList.add("visible");
       document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "none";
       google.script.run.withSuccessHandler(function(stats) {
         let mensaje = "Estadísticas generales:\n";
         mensaje += "Total Registros: " + stats.totalRegistros + "\n";
@@ -1167,19 +1368,53 @@
     function reporteGeneral() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "none";
       showFancyAlert("Función de Reporte General en construcción...");
     }
 
     function reporteIndividual() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "none";
       showFancyAlert("Función de Reporte Individual en construcción...");
     }
 
     function registroAsistencia() {
       showFancyAlert("Función de Registro de Asistencias en construcción...");
     }
+    
+    /* ============ Funciones para el mapa de Geoballas ============ */
+    var map;  // Variable global para el mapa
+    var marker; // Variable global para el marcador
+
+    function initMap() {
+      // Coordenadas iniciales (por ejemplo, centro de Piura)
+     const defaultLatLng = { lat: -8.109, lng: -79.021 };
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: defaultLatLng,
+        zoom: 15,
+      });
+      
+      // Si ya existe un marcador, se reutiliza, sino se crea uno al hacer clic
+      map.addListener("click", (e) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        if (!marker) {
+          marker = new google.maps.Marker({
+            position: { lat, lng },
+            map: map,
+          });
+        } else {
+          marker.setPosition({ lat, lng });
+        }
+        // Actualizar el campo de Ubicación con las coordenadas obtenidas
+        document.getElementById("geoballaUbicacion").value = lat + "," + lng;
+      });
+    }
+  </script>
+  <!-- Incluir el script de Google Maps con tu API key -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap">
   </script>
 </body>
 </html>
-
