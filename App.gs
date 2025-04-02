@@ -358,6 +358,10 @@ function verificarEntradaSinSalida() {
 }
 
 /************** FUNCIONES DE GEOBALLAS **************/
+/**
+ * Verifica si la ubicación está dentro de una geoballa válida
+ * Devuelve un objeto con: { dentro: true/false, lugar: "nombre", distancia: X, radio: Y }
+ */
 function verificarGeoballa(ubicacion) {
   try {
     var parts = ubicacion.split(",");
@@ -365,44 +369,52 @@ function verificarGeoballa(ubicacion) {
     var latUser = parseFloat(parts[0].trim());
     var lngUser = parseFloat(parts[1].trim());
     if (isNaN(latUser) || isNaN(lngUser)) return null;
-    
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
     var data = geoSheet.getDataRange().getValues(); // Incluye encabezado
-    
-    // Recorremos cada geoballa
+
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
       var lugar = row[0];
       var ubicacionGeo = row[1];
       var radio = parseFloat(row[2]);
-      if (!ubicacionGeo) continue;
+      if (!ubicacionGeo || isNaN(radio)) continue;
+
       var partsGeo = ubicacionGeo.split(",");
       if (partsGeo.length < 2) continue;
       var latGeo = parseFloat(partsGeo[0].trim());
       var lngGeo = parseFloat(partsGeo[1].trim());
-      if (isNaN(latGeo) || isNaN(lngGeo) || isNaN(radio)) continue;
-      
-      // Calcular la distancia usando la fórmula de Haversine
-      var distance = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
-      
-      // Aquí agregamos el log para depurar
-    Logger.log("Usuario: lat = " + latUser + ", lng = " + lngUser);
-Logger.log("Geoballa " + lugar + ": lat = " + latGeo + ", lng = " + lngGeo);
-Logger.log("Distancia calculada = " + distance + " m, Radio permitido = " + radio + " m");
+      if (isNaN(latGeo) || isNaN(lngGeo)) continue;
 
-if (distance <= radio) {
-  return lugar;
-}
+      var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
+      Logger.log("Geoballa " + lugar + ": Distancia = " + distancia + " m, Radio = " + radio + " m");
+
+      if (distancia <= radio) {
+        return {
+          dentro: true,
+          lugar: lugar,
+          distancia: Math.round(distancia),
+          radio: radio
+        };
+      } else {
+        // Si está fuera, igual devolvemos info del lugar más cercano (primero que encuentra)
+        return {
+          dentro: false,
+          lugar: lugar,
+          distancia: Math.round(distancia),
+          radio: radio
+        };
+      }
     }
-    return null;
+
+    return null; // No se encontró ninguna geoballa
   } catch (error) {
     Logger.log("Error en verificarGeoballa: " + error);
     return null;
   }
 }
-
 
 function calcularDistancia(lat1, lng1, lat2, lng2) {
   var R = 6371000; // Radio de la Tierra en metros
