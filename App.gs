@@ -9,7 +9,7 @@ function doGet() {
 /************** CONTROL DE SESIÓN Y LOGIN **************/
 function validarSesionActiva() {
   try {
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     return !!usuario;
   } catch (error) {
     Logger.log("Error en validarSesionActiva: " + error);
@@ -19,14 +19,14 @@ function validarSesionActiva() {
 
 function validarLogin(usuario, contrasena) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("Usuarios");
-    const datos = hoja.getDataRange().getValues();
-    const userTrimmed = usuario.trim();
-    const passTrimmed = contrasena.trim();
-    for (let i = 1; i < datos.length; i++) {
-      const dni = datos[i][0].toString().trim();
-      const clave = datos[i][5].toString().trim();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var datos = hoja.getDataRange().getValues();
+    var userTrimmed = usuario.trim();
+    var passTrimmed = contrasena.trim();
+    for (var i = 1; i < datos.length; i++) {
+      var dni = datos[i][0].toString().trim();
+      var clave = datos[i][5].toString().trim();
       if (dni === userTrimmed && clave === passTrimmed) {
         PropertiesService.getUserProperties().setProperty("usuarioActivo", userTrimmed);
         return true;
@@ -41,13 +41,13 @@ function validarLogin(usuario, contrasena) {
 
 function obtenerNombreUsuario() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("Usuarios");
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) return "Usuario";
-    const datos = hoja.getDataRange().getValues();
-    const userTrimmed = usuario.trim();
-    for (let i = 1; i < datos.length; i++) {
+    var datos = hoja.getDataRange().getValues();
+    var userTrimmed = usuario.trim();
+    for (var i = 1; i < datos.length; i++) {
       if (datos[i][0].toString().trim() === userTrimmed) {
         return datos[i][1];
       }
@@ -61,13 +61,13 @@ function obtenerNombreUsuario() {
 
 function obtenerNivelUsuario() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("Usuarios");
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) return 0;
-    const datos = hoja.getDataRange().getValues();
-    const userTrimmed = usuario.trim();
-    for (let i = 1; i < datos.length; i++) {
+    var datos = hoja.getDataRange().getValues();
+    var userTrimmed = usuario.trim();
+    for (var i = 1; i < datos.length; i++) {
       if (datos[i][0].toString().trim() === userTrimmed) {
         return Number(datos[i][6]);
       }
@@ -82,32 +82,32 @@ function obtenerNivelUsuario() {
 /************** MARCACIONES Y REGISTRO DE ASISTENCIA **************/
 function obtenerMarcacionesHoy() {
   try {
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) return [];
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("BDregistros");
-    const datos = hoja.getDataRange().getValues();
-    const timeZone = ss.getSpreadsheetTimeZone();
-    const fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
-    const resultados = [];
-    const userTrimmed = usuario.trim();
-    for (let i = 1; i < datos.length; i++) {
-      const dniFila = datos[i][0].toString().trim();
-      let fechaFila = "";
-      const valorFecha = datos[i][2];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var datos = hoja.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
+    var resultados = [];
+    var userTrimmed = usuario.trim();
+    for (var i = 1; i < datos.length; i++) {
+      var dniFila = datos[i][0].toString().trim();
+      var fechaFila = "";
+      var valorFecha = datos[i][2];
       if (valorFecha instanceof Date && !isNaN(valorFecha)) {
         fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
       } else {
         fechaFila = valorFecha.toString().trim();
       }
-      let horaFila = "";
-      const valorHora = datos[i][3];
+      var horaFila = "";
+      var valorHora = datos[i][3];
       if (valorHora instanceof Date && !isNaN(valorHora)) {
         horaFila = Utilities.formatDate(valorHora, timeZone, "HH:mm:ss");
       } else {
         horaFila = valorHora.toString().trim();
       }
-      const tipo = datos[i][4].toString().trim();
+      var tipo = datos[i][4].toString().trim();
       if (dniFila === userTrimmed && fechaFila === fechaHoy) {
         resultados.push({ tipo: tipo, fecha: fechaFila, hora: horaFila });
       }
@@ -120,55 +120,61 @@ function obtenerMarcacionesHoy() {
 }
 
 /**
- * subirYRegistrarAsistencia: Sube la imagen, verifica la geolocalización y registra la asistencia.
+ * subirYRegistrarAsistencia: Sube la imagen, verifica la geolocalización (geoballa) y registra la asistencia.
  * Evita registros duplicados para el mismo tipo en el mismo día.
  */
 function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
   try {
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) {
       return { mensaje: "Usuario no autenticado." };
     }
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hojaUsuarios = ss.getSheetByName("Usuarios");
-    const hojaRegistros = ss.getSheetByName("BDregistros");
-    const datosUsuarios = hojaUsuarios.getDataRange().getValues();
-    let nombre = "Desconocido";
-    const userTrimmed = usuario.trim();
-    for (let i = 1; i < datosUsuarios.length; i++) {
+    // Verificar si el usuario se encuentra en una geoballa autorizada
+    var lugar = verificarGeoballa(ubicacion);
+    if (!lugar) {
+      return { mensaje: "No se encuentra en un centro de labor autorizado para marcar asistencia." };
+    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaUsuarios = ss.getSheetByName("Usuarios");
+    var hojaRegistros = ss.getSheetByName("BDregistros");
+    var datosUsuarios = hojaUsuarios.getDataRange().getValues();
+    var nombre = "Desconocido";
+    var userTrimmed = usuario.trim();
+    for (var i = 1; i < datosUsuarios.length; i++) {
       if (datosUsuarios[i][0].toString().trim() === userTrimmed) {
         nombre = datosUsuarios[i][1];
         break;
       }
     }
-    const timeZone = ss.getSpreadsheetTimeZone();
-    const now = new Date();
-    const fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
-    const horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var now = new Date();
+    var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
+    var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
     // Evitar duplicados: si ya se registró este tipo hoy, no registrar de nuevo.
-    const datosRegistros = hojaRegistros.getDataRange().getValues();
-    for (let i = 1; i < datosRegistros.length; i++) {
-      const dniFila = datosRegistros[i][0].toString().trim();
-      let fechaFila = "";
-      const valorFecha = datosRegistros[i][2];
+    var datosRegistros = hojaRegistros.getDataRange().getValues();
+    for (var i = 1; i < datosRegistros.length; i++) {
+      var dniFila = datosRegistros[i][0].toString().trim();
+      var fechaFila = "";
+      var valorFecha = datosRegistros[i][2];
       if (valorFecha instanceof Date && !isNaN(valorFecha)) {
         fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
       } else {
         fechaFila = valorFecha.toString().trim();
       }
-      const tipoFila = datosRegistros[i][4].toString().trim();
+      var tipoFila = datosRegistros[i][4].toString().trim();
       if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
-        return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
+        return { mensaje: "Ya has registrado " + tipoEvento + " hoy." };
       }
     }
     // Subir imagen a Drive
-    const carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
-    const blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
-    const archivo = carpeta.createFile(blob);
-    const linkImagen = archivo.getUrl();
+    var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
+    var blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, userTrimmed + "_" + fechaHoy + "_" + horaAhora + ".jpg");
+    var archivo = carpeta.createFile(blob);
+    var linkImagen = archivo.getUrl();
+    // Registrar asistencia incluyendo el nombre del centro (lugar)
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -177,9 +183,10 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       tipoEvento,
       "Ninguna",
       ubicacion,
+      lugar,
       linkImagen
     ]);
-    return { mensaje: `Se registró ${tipoEvento} correctamente.`, evento: tipoEvento, fecha: fechaHoy, hora: horaAhora };
+    return { mensaje: "Se registró su " + tipoEvento.toLowerCase() + " en: " + lugar + ".", evento: tipoEvento, fecha: fechaHoy, hora: horaAhora };
   } catch (error) {
     Logger.log("Error en subirYRegistrarAsistencia: " + error);
     return { mensaje: "Error al registrar asistencia." };
@@ -189,12 +196,12 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
 /************** GESTIÓN DE USUARIOS **************/
 function guardarUsuarioEnHoja(userObj) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hojaUsuarios = ss.getSheetByName("Usuarios");
-    const datos = hojaUsuarios.getDataRange().getValues();
-    const userTrimmed = userObj.dni.toString().trim();
-    let filaEncontrada = -1;
-    for (let i = 1; i < datos.length; i++) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaUsuarios = ss.getSheetByName("Usuarios");
+    var datos = hojaUsuarios.getDataRange().getValues();
+    var userTrimmed = userObj.dni.toString().trim();
+    var filaEncontrada = -1;
+    for (var i = 1; i < datos.length; i++) {
       if (datos[i][0].toString().trim() === userTrimmed) {
         filaEncontrada = i;
         break;
@@ -212,8 +219,8 @@ function guardarUsuarioEnHoja(userObj) {
         userObj.horasExtras
       ]);
     } else {
-      const filaHoja = filaEncontrada + 1;
-      const nuevosValores = [
+      var filaHoja = filaEncontrada + 1;
+      var nuevosValores = [
         userObj.dni,
         userObj.nombre,
         userObj.area,
@@ -233,12 +240,12 @@ function guardarUsuarioEnHoja(userObj) {
 
 function obtenerListaUsuarios() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("Usuarios");
-    const datos = hoja.getDataRange().getValues();
-    const lista = [];
-    for (let i = 1; i < datos.length; i++) {
-      const row = datos[i];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var datos = hoja.getDataRange().getValues();
+    var lista = [];
+    for (var i = 1; i < datos.length; i++) {
+      var row = datos[i];
       if (row[0]) {
         lista.push({
           dni: row[0],
@@ -261,12 +268,12 @@ function obtenerListaUsuarios() {
 
 function eliminarUsuario(dni) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("Usuarios");
-    const datos = hoja.getDataRange().getValues();
-    const dniTrimmed = dni.toString().trim();
-    for (let i = 1; i < datos.length; i++) {
-      const dniFila = datos[i][0].toString().trim();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var datos = hoja.getDataRange().getValues();
+    var dniTrimmed = dni.toString().trim();
+    for (var i = 1; i < datos.length; i++) {
+      var dniFila = datos[i][0].toString().trim();
       if (dniFila === dniTrimmed) {
         hoja.deleteRow(i + 1);
         return true;
@@ -282,21 +289,21 @@ function eliminarUsuario(dni) {
 /************** REPORTES Y ESTADÍSTICAS **************/
 function obtenerEstadisticas() {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hojaRegistros = ss.getSheetByName("BDregistros");
-    const datos = hojaRegistros.getDataRange().getValues();
-    let totalRegistros = 0, totalEntradas = 0, totalSalidas = 0;
-    const registrosPorUsuario = {};
-    for (let i = 1; i < datos.length; i++) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaRegistros = ss.getSheetByName("BDregistros");
+    var datos = hojaRegistros.getDataRange().getValues();
+    var totalRegistros = 0, totalEntradas = 0, totalSalidas = 0;
+    var registrosPorUsuario = {};
+    for (var i = 1; i < datos.length; i++) {
       if (!datos[i][0]) continue;
       totalRegistros++;
-      const tipo = datos[i][4].toString().trim();
+      var tipo = datos[i][4].toString().trim();
       if (tipo === "Entrada") totalEntradas++;
       if (tipo === "Salida") totalSalidas++;
-      const dni = datos[i][0].toString().trim();
+      var dni = datos[i][0].toString().trim();
       registrosPorUsuario[dni] = (registrosPorUsuario[dni] || 0) + 1;
     }
-    return { totalRegistros, totalEntradas, totalSalidas, registrosPorUsuario };
+    return { totalRegistros: totalRegistros, totalEntradas: totalEntradas, totalSalidas: totalSalidas, registrosPorUsuario: registrosPorUsuario };
   } catch (error) {
     Logger.log("Error en obtenerEstadisticas: " + error);
     return { totalRegistros: 0, totalEntradas: 0, totalSalidas: 0, registrosPorUsuario: {} };
@@ -315,32 +322,28 @@ function cerrarSesion() {
 }
 
 /************** VALIDACIÓN AUTOMÁTICA DE ENTRADA/SALIDA **************/
-/**
- * Verifica si existe una "Entrada" sin "Salida" para el usuario activo en el día de hoy.
- * Retorna true si ya hay una Entrada sin Salida, de lo contrario false.
- */
 function verificarEntradaSinSalida() {
   try {
-    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) return false;
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hoja = ss.getSheetByName("BDregistros");
-    const datos = hoja.getDataRange().getValues();
-    const timeZone = ss.getSpreadsheetTimeZone();
-    const fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
-    let entradaEncontrada = false;
-    for (let i = 1; i < datos.length; i++) {
-      const dniFila = datos[i][0].toString().trim();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var datos = hoja.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
+    var entradaEncontrada = false;
+    for (var i = 1; i < datos.length; i++) {
+      var dniFila = datos[i][0].toString().trim();
       if (dniFila !== usuario.trim()) continue;
-      let fechaFila = "";
-      const valorFecha = datos[i][2];
+      var fechaFila = "";
+      var valorFecha = datos[i][2];
       if (valorFecha instanceof Date && !isNaN(valorFecha)) {
         fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
       } else {
         fechaFila = valorFecha.toString().trim();
       }
       if (fechaFila !== fechaHoy) continue;
-      const tipoFila = datos[i][4].toString().trim();
+      var tipoFila = datos[i][4].toString().trim();
       if (tipoFila === "Entrada") {
         entradaEncontrada = true;
       } else if (tipoFila === "Salida") {
@@ -351,6 +354,128 @@ function verificarEntradaSinSalida() {
   } catch (error) {
     Logger.log("Error en verificarEntradaSinSalida: " + error);
     return false;
+  }
+}
+
+/************** FUNCIONES DE GEOBALLAS **************/
+function verificarGeoballa(ubicacion) {
+  try {
+    var parts = ubicacion.split(",");
+    if (parts.length < 2) return null;
+    var latUser = parseFloat(parts[0].trim());
+    var lngUser = parseFloat(parts[1].trim());
+    if (isNaN(latUser) || isNaN(lngUser)) return null;
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var geoSheet = ss.getSheetByName("geoballa");
+    if (!geoSheet) return null;
+    var data = geoSheet.getDataRange().getValues(); // Incluye encabezado
+    // Se asume: Columna A: Lugar, B: Ubicacion ("lat, lng"), C: Radio (m)
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var lugar = row[0];
+      var ubicacionGeo = row[1];
+      var radio = parseFloat(row[2]);
+      if (!ubicacionGeo) continue;
+      var partsGeo = ubicacionGeo.split(",");
+      if (partsGeo.length < 2) continue;
+      var latGeo = parseFloat(partsGeo[0].trim());
+      var lngGeo = parseFloat(partsGeo[1].trim());
+      if (isNaN(latGeo) || isNaN(lngGeo) || isNaN(radio)) continue;
+      var distance = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
+      if (distance <= radio) {
+        return lugar;
+      }
+    }
+    return null;
+  } catch (error) {
+    Logger.log("Error en verificarGeoballa: " + error);
+    return null;
+  }
+}
+
+function calcularDistancia(lat1, lng1, lat2, lng2) {
+  var R = 6371000; // Radio de la Tierra en metros
+  var dLat = toRad(lat2 - lat1);
+  var dLng = toRad(lng2 - lng1);
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(value) {
+  return value * Math.PI / 180;
+}
+
+function guardarGeoballa(geoObj) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("geoballa");
+    if (!hoja) {
+      return { mensaje: "La hoja 'geoballa' no existe." };
+    }
+    var data = hoja.getDataRange().getValues();
+    var filaEncontrada = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === geoObj.lugar.trim()) {
+        filaEncontrada = i;
+        break;
+      }
+    }
+    if (filaEncontrada === -1) {
+      hoja.appendRow([geoObj.lugar, geoObj.ubicacion, geoObj.radio]);
+    } else {
+      hoja.getRange(filaEncontrada + 1, 1).setValue(geoObj.lugar);
+      hoja.getRange(filaEncontrada + 1, 2).setValue(geoObj.ubicacion);
+      hoja.getRange(filaEncontrada + 1, 3).setValue(geoObj.radio);
+    }
+    return { mensaje: "Geoballa guardada correctamente." };
+  } catch (error) {
+    Logger.log("Error en guardarGeoballa: " + error);
+    return { mensaje: "Error al guardar geoballa." };
+  }
+}
+
+function eliminarGeoballa(lugar) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("geoballa");
+    var data = hoja.getDataRange().getValues();
+    var lugarTrimmed = lugar.toString().trim();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === lugarTrimmed) {
+        hoja.deleteRow(i + 1);
+        return { mensaje: "Geoballa eliminada correctamente." };
+      }
+    }
+    return { mensaje: "No se encontró la geoballa para el lugar especificado." };
+  } catch (error) {
+    Logger.log("Error en eliminarGeoballa: " + error);
+    return { mensaje: "Error al eliminar geoballa." };
+  }
+}
+
+function obtenerGeoballas() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("geoballa");
+    var data = hoja.getDataRange().getValues();
+    var geoballas = [];
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        geoballas.push({
+          lugar: data[i][0],
+          ubicacion: data[i][1],
+          radio: data[i][2]
+        });
+      }
+    }
+    return geoballas;
+  } catch (error) {
+    Logger.log("Error en obtenerGeoballas: " + error);
+    return [];
   }
 }
 
