@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <!-- Ajuste para móviles -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.2, maximum-scale=1.2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* ==============================
+       1. Reset y Estilos Generales
+       ============================== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to right, #ece9e6, #ffffff);
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    /* ==============================
+       2. Transiciones y Estados
+       ============================== */
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .visible {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.3s ease;
+    }
+    
+    /* ==============================
+       3. Contenedores: Login, Marcación, Panel Admin
+       ============================== */
+    .login-box, .marcacion-box, .admin-panel {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(229,57,53,0.3);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      margin: 40px auto; /* margen vertical */
+    }
+    .admin-panel {
+      max-width: 1100px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .logo img {
+      max-width: 150px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    
+    /* ==============================
+       4. Inputs, Botones y Spinner
+       ============================== */
+    .input-group {
+      position: relative;
+      margin: 10px 0;
+      width: 100%;
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 35px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    input:focus {
+      border-color: #e53935;
+    }
+    .input-group i {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+    }
+    .input-group .fa-user,
+    .input-group .fa-key {
+      left: 10px;
+    }
+    .ver-contraseña {
+      right: 10px;
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: filter 0.3s;
+      margin-top: 10px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      filter: brightness(0.9);
+    }
+    .btn-red { background: #e53935; }
+    .btn-blue { background: #007bff; }
+    .btn-gray { background: #555; }
+    .btn-orange { background: #f0ad4e; }
+    .mensaje { color: red; margin-top: 10px; }
+    footer { color: #888; font-size: 12px; margin-top: 15px; }
+    .spinner {
+      display: none;
+      margin: 10px auto;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #e53935;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* ==============================
+       5. Sección de Marcación (Usuarios)
+       ============================== */
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    #bienvenida {
+      font-weight: bold;
+      margin: 15px 0;
+      color: #333;
+    }
+    video {
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
+      display: none;
+      max-height: 300px;
+    }
+    
+    /* Etiquetas "coquetas" para Entrada y Salida */
+    .marcacion-labels {
+      margin: 20px 0;
+    }
+    .entrada-label, .salida-label {
+      padding: 10px;
+      border-radius: 5px;
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .entrada-label {
+      background: #d1ecf1;
+      color: #0c5460;
+      border-left: 5px solid #0c5460;
+    }
+    .salida-label {
+      background: #d4edda;
+      color: #155724;
+      border-left: 5px solid #155724;
+    }
+    .entrada-label i, .salida-label i {
+      font-size: 18px;
+    }
+    
+    /* ==============================
+       6. Panel de Administración
+       ============================== */
+    .admin-navbar {
+      background-color: #e53935;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+    .admin-navbar .logo-admin {
+      font-size: 20px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .admin-navbar .menu-admin {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .admin-navbar .menu-admin a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+    .admin-navbar .menu-admin a:hover {
+      opacity: 0.8;
+    }
+    .admin-panel {
+      display: none;
+      background: #ffffff;
+      margin: 60px auto 20px auto;
+      border-radius: 8px;
+      box-shadow: 0 8px 16px rgba(229,57,53,0.3);
+      width: 90%;
+      max-width: 1100px;
+      overflow: hidden;
+    }
+    .admin-panel .container-admin {
+      padding: 20px;
+    }
+    .admin-panel h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    /* ==============================
+       7. Sección Usuarios en Admin
+       ============================== */
+    .users-section {
+      display: none;
+      padding: 20px;
+    }
+    .users-section h4 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .form-usuarios {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .form-usuarios .row-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .form-usuarios label {
+      font-size: 13px;
+      color: #333;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .form-usuarios input {
+      width: 100%;
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .actions-usuarios {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .actions-usuarios button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 14px;
+    }
+    .btn-clean { background-color: #888; }
+    .btn-save { background-color: #e53935; }
+    
+    /* ==============================
+       8. Tabla de Usuarios
+       ============================== */
+    .tabla-usuarios-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .tabla-usuarios {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      table-layout: auto; /* Permite que se ajuste a contenido */
+    }
+    .tabla-usuarios thead {
+      background-color: #e53935;
+      color: #fff;
+    }
+    .tabla-usuarios th, .tabla-usuarios td {
+      padding: 10px;
+      font-size: 13px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    /* Fijamos un ancho mínimo a la columna "Acciones" */
+    .tabla-usuarios th:nth-child(1),
+    .tabla-usuarios td:nth-child(1) {
+      min-width: 90px;
+      text-align: center; /* Centra los íconos en la celda */
+    }
+
+    .tabla-usuarios tbody tr:hover {
+      background-color: #f5f5f5;
+    }
+    .tabla-usuarios .btn-icon {
+      display: inline-block;
+      vertical-align: middle;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 8px; /* Separación entre íconos */
+    }
+    .tabla-usuarios .btn-icon:last-child {
+      margin-right: 0;
+    }
+    .tabla-usuarios .btn-icon.edit {
+      color: #007bff;
+    }
+    .tabla-usuarios .btn-icon.delete {
+      color: #e53935;
+    }
+    
+    /* ==============================
+       9. Fancy Alert Modal (Mensaje)
+       ============================== */
+    #fancyAlertOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #fancyAlertOverlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    #fancyAlertBox {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 25px;
+      width: 90%;
+      max-width: 350px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      text-align: center;
+      position: relative;
+      transform: translateY(-30px);
+      transition: transform 0.3s;
+    }
+    #fancyAlertOverlay.active #fancyAlertBox {
+      transform: translateY(0);
+    }
+    .fancyAlertHeader {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      color: #e53935;
+      margin-bottom: 15px;
+      justify-content: center;
+    }
+    .fancyAlertHeader i {
+      color: #e53935;
+      font-size: 22px;
+    }
+    #fancyAlertTitle {
+      font-weight: bold;
+    }
+    #fancyAlertMessage {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 15px;
+      white-space: pre-wrap;
+    }
+    #fancyAlertClose {
+      display: block;
+      margin: 20px auto 0 auto;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #fancyAlertClose:hover {
+      filter: brightness(0.9);
+    }
+    
+    /* ==============================
+       10. Fancy Confirm Modal
+       ============================== */
+    #fancyConfirmOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #fancyConfirmOverlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    #fancyConfirmBox {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 25px;
+      width: 90%;
+      max-width: 350px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      text-align: center;
+      position: relative;
+      transform: translateY(-30px);
+      transition: transform 0.3s;
+    }
+    #fancyConfirmOverlay.active #fancyConfirmBox {
+      transform: translateY(0);
+    }
+    .button-group-confirm {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .button-group-confirm button {
+      background: #e53935;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 80px;
+    }
+    .button-group-confirm button:hover {
+      filter: brightness(0.9);
+    }
+    
+    /* ==============================
+       11. Media Queries
+       ============================== */
+    @media (max-width: 800px) {
+      .form-usuarios .row-fields {
+        flex-direction: column;
+      }
+      .form-usuarios .row-fields > div {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+    @media (max-width: 600px) {
+      .tabla-usuarios th, .tabla-usuarios td {
+        font-size: 12px;
+      }
+      .login-box, .marcacion-box {
+        width: 95%;
+        padding: 20px;
+        margin-top: 20px;
+      }
+      .logo img {
+        max-width: 120px;
+      }
+      .button-group {
+        flex-direction: column;
+      }
+      .admin-navbar .menu-admin {
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body onload="inicializarPagina()">
+  <!-- LOGIN -->
+  <div class="login-box visible" id="loginDiv">
+    <div class="logo">
+      <img src="https://i.imgur.com/tud5XMS.png" alt="SOLINPA Logo">
+    </div>
+    <h2><i class="fa-solid fa-lock"></i> Inicia Sesión</h2>
+    <h3>Sistema de Asistencia SOLINPA</h3>
+
+    <div class="input-group">
+      <i class="fa-solid fa-user"></i>
+      <input type="text" id="usuario" placeholder="DNI" required maxlength="8">
+    </div>
+
+    <div class="input-group">
+      <i class="fa-solid fa-key"></i>
+      <input type="password" id="contrasena" placeholder="Clave" required>
+      <span class="ver-contraseña" id="iconoOjo">
+        <i class="fa-solid fa-eye-slash"></i>
+      </span>
+    </div>
+
+    <button class="btn-red" id="loginBtn" onclick="enviarLogin()">
+      <i class="fa-solid fa-right-to-bracket"></i> Entrar
+    </button>
+    <div class="spinner" id="loginSpinner"></div>
+    <div class="mensaje" id="mensaje"></div>
+
+    <footer>© <span id="anio"></span> - SOLINPA E.I.R.L.</footer>
+  </div>
+
+  <!-- MARCACIÓN (Usuarios) -->
+  <div class="marcacion-box hidden" id="mainContent">
+    <div class="logo">
+      <img src="https://i.imgur.com/tud5XMS.png" alt="SOLINPA Logo">
+    </div>
+    <h3>Marque su asistencia</h3>
+    <div id="bienvenida">Bienvenido: Usuario</div>
+
+    <div class="button-group">
+      <button class="btn-red" id="registroBtn" onclick="registroAsistencia()">
+        <i class="fa-solid fa-file-lines"></i> Ir a mi Registro de Asistencias
+      </button>
+      <button class="btn-blue" id="adminBtn" style="display:none;" onclick="mostrarAdminPanel()">
+        <i class="fa-solid fa-user-gear"></i> Ir a Panel de Administrador
+      </button>
+      <button class="btn-gray" onclick="cerrarSesion()">
+        <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+      </button>
+    </div>
+
+    <!-- Etiquetas coquetas para Entrada y Salida -->
+    <div class="marcacion-labels">
+      <div class="entrada-label" id="entradaLabel">
+        <i class="fa-solid fa-door-open"></i>
+        <span>Entrada: --:--</span>
+      </div>
+      <div class="salida-label" id="salidaLabel">
+        <i class="fa-solid fa-door-closed"></i>
+        <span>Salida: --:--</span>
+      </div>
+    </div>
+
+    <button class="btn-orange" onclick="automatizarAsistencia()">
+      <i class="fa-solid fa-camera"></i> Activar Cámara
+    </button>
+    <video id="video" autoplay playsinline></video>
+    <div class="mensaje" id="mensajeEvento"></div>
+  </div>
+
+  <!-- PANEL DE ADMINISTRACIÓN -->
+  <div class="admin-panel hidden" id="adminPanel">
+    <div class="admin-navbar">
+      <div class="logo-admin">SOLINPA</div>
+      <div class="menu-admin">
+        <a onclick="reporteGeneral()">Reporte General</a>
+        <a onclick="reporteIndividual()">Reporte Individual</a>
+        <a onclick="mostrarEstadisticas()">Estadísticas</a>
+        <a onclick="mostrarUsersSection()">Usuarios</a>
+        <a onclick="cerrarSesion()">
+          <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+        </a>
+      </div>
+    </div>
+    <div class="container-admin">
+      <h3><i class="fa-solid fa-file"></i> Panel de Administración</h3>
+      <p id="adminBienvenida">Bienvenido: <span id="adminNombre">[Nombre Usuario]</span></p>
+      <p>Selecciona una opción del menú superior para ver los reportes, estadísticas o gestionar usuarios.</p>
+      
+      <!-- Sección Usuarios -->
+      <div class="users-section" id="usersSection">
+        <h4><i class="fa-solid fa-users"></i> Usuarios</h4>
+        <div class="form-usuarios">
+          <div class="row-fields">
+            <div style="flex:1; min-width:200px;">
+              <label for="usuarioDni">USUARIO (DNI)</label>
+              <input type="text" id="usuarioDni" placeholder="DNI (8 dígitos)" maxlength="8" pattern="^\d{8}$" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)">
+            </div>
+            <div style="flex:1; min-width:200px;">
+              <label for="nombreCompleto">Nombre Completo</label>
+              <input type="text" id="nombreCompleto" placeholder="Ej: Juan Pérez">
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label for="area">Área</label>
+              <input type="text" id="area" placeholder="Área">
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label for="cargo">Cargo</label>
+              <input type="text" id="cargo" placeholder="Cargo">
+            </div>
+            <div style="flex:1; min-width:200px;">
+              <label for="email">Email</label>
+              <input type="text" id="email" placeholder="ejemplo@gmail.com">
+            </div>
+            <div style="flex:1; min-width:150px;">
+              <label for="contrasenaUsuario">Contraseña</label>
+              <input type="text" id="contrasenaUsuario" placeholder="8 dígitos numéricos" pattern="^\d{8}$">
+            </div>
+            <div style="flex:1; min-width:100px;">
+              <label for="nivel">Nivel</label>
+              <input type="number" id="nivel" placeholder="0 o 1">
+            </div>
+            <div style="flex:1; min-width:120px;">
+              <label for="horasExtras">HorasExtras</label>
+              <input type="number" id="horasExtras" placeholder="0 o 1">
+            </div>
+          </div>
+          <div class="actions-usuarios">
+            <button class="btn-clean" onclick="limpiarFormulario()">
+              <i class="fa-solid fa-eraser"></i> Limpiar
+            </button>
+            <button class="btn-save" id="guardarBtn" onclick="guardarUsuario()">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar
+            </button>
+          </div>
+        </div>
+        <div class="tabla-usuarios-container">
+          <table class="tabla-usuarios" id="tablaUsuarios">
+            <thead>
+              <tr>
+                <th>Acciones</th>
+                <th>Nombre Completo</th>
+                <th>USUARIO (DNI)</th>
+                <th>Contraseña</th>
+                <th>Área</th>
+                <th>Cargo</th>
+                <th>Email</th>
+                <th>Nivel</th>
+                <th>HorasExtras</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUsuarios"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Fin Sección Usuarios -->
+    </div>
+  </div>
+
+  <!-- Fancy Alert Modal (Mensaje) -->
+  <div id="fancyAlertOverlay">
+    <div id="fancyAlertBox">
+      <div class="fancyAlertHeader">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span id="fancyAlertTitle">¡Atención!</span>
+      </div>
+      <div id="fancyAlertMessage"></div>
+      <button id="fancyAlertClose">Aceptar</button>
+    </div>
+  </div>
+
+  <!-- Fancy Confirm Modal (Confirmación personalizada) -->
+  <div id="fancyConfirmOverlay">
+    <div id="fancyConfirmBox">
+      <div class="fancyAlertHeader">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span id="fancyConfirmTitle">Confirmar</span>
+      </div>
+      <div id="fancyConfirmMessage"></div>
+      <div class="button-group-confirm">
+        <button id="fancyConfirmYes">Sí</button>
+        <button id="fancyConfirmNo">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /************** INICIALIZACIÓN Y CONFIGURACIÓN **************/
+    function inicializarPagina() {
+      document.getElementById("anio").textContent = new Date().getFullYear();
+      const iconoOjo = document.getElementById("iconoOjo");
+      iconoOjo.addEventListener("click", togglePassword);
+      verificarSesionActiva();
+    }
+
+    /************** CONTROL DE SESIÓN Y LOGIN **************/
+    function verificarSesionActiva() {
+      google.script.run.withSuccessHandler(function(estaActivo){
+        if (estaActivo) {
+          document.getElementById("loginDiv").classList.remove("visible");
+          document.getElementById("loginDiv").classList.add("hidden");
+          setTimeout(() => {
+            document.getElementById("loginDiv").style.display = "none";
+            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("mainContent").classList.add("visible");
+            obtenerNombreUsuario();
+            obtenerNivelUsuario();
+            cargarMarcacionesHoy();
+          }, 300);
+        } else {
+          document.getElementById("loginDiv").classList.remove("hidden");
+          document.getElementById("loginDiv").classList.add("visible");
+          document.getElementById("mainContent").style.display = "none";
+        }
+      }).validarSesionActiva();
+    }
+
+    function enviarLogin() {
+      const loginBtn = document.getElementById("loginBtn");
+      const spinner = document.getElementById("loginSpinner");
+      loginBtn.disabled = true;
+      spinner.style.display = "block";
+      const usuario = document.getElementById("usuario").value;
+      const contrasena = document.getElementById("contrasena").value;
+      google.script.run.withSuccessHandler(function(esValido){
+        loginBtn.disabled = false;
+        spinner.style.display = "none";
+        if (esValido) {
+          document.getElementById("loginDiv").classList.remove("visible");
+          document.getElementById("loginDiv").classList.add("hidden");
+          setTimeout(() => {
+            document.getElementById("loginDiv").style.display = "none";
+            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("mainContent").classList.add("visible");
+            obtenerNombreUsuario();
+            obtenerNivelUsuario();
+            cargarMarcacionesHoy();
+          }, 300);
+        } else {
+          showFancyAlert("Contraseña incorrecta.");
+        }
+      }).validarLogin(usuario, contrasena);
+    }
+
+    function togglePassword() {
+      const input = document.getElementById("contrasena");
+      const icono = document.getElementById("iconoOjo");
+      if (input.type === "password") {
+        input.type = "text";
+        icono.innerHTML = '<i class="fa-solid fa-eye"></i>';
+      } else {
+        input.type = "password";
+        icono.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+      }
+    }
+
+    function obtenerNombreUsuario() {
+      google.script.run.withSuccessHandler(function(nombre) {
+        document.getElementById("bienvenida").innerText = "Bienvenido: " + nombre;
+        document.getElementById("adminNombre").innerText = nombre;
+      }).obtenerNombreUsuario();
+    }
+
+    function obtenerNivelUsuario() {
+      google.script.run.withSuccessHandler(function(nivel) {
+        if (Number(nivel) === 1) {
+          document.getElementById("adminBtn").style.display = "block";
+        } else {
+          document.getElementById("adminBtn").style.display = "none";
+        }
+      }).obtenerNivelUsuario();
+    }
+
+    /************** MARCACIÓN Y REGISTRO DE ASISTENCIA **************/
+    function cargarMarcacionesHoy() {
+      google.script.run.withSuccessHandler(function(registros) {
+        const entradaDiv = document.getElementById("entradaLabel");
+        const salidaDiv = document.getElementById("salidaLabel");
+        entradaDiv.querySelector("span").textContent = "Entrada: --:--";
+        salidaDiv.querySelector("span").textContent = "Salida: --:--";
+        registros.forEach(r => {
+          if (r.tipo === "Entrada") {
+            entradaDiv.querySelector("span").textContent = `Entrada: ${r.fecha} ${r.hora}`;
+          } else if (r.tipo === "Salida") {
+            salidaDiv.querySelector("span").textContent = `Salida: ${r.fecha} ${r.hora}`;
+          }
+        });
+      }).obtenerMarcacionesHoy();
+    }
+
+    function automatizarAsistencia() {
+      google.script.run.withSuccessHandler(function(yaHayEntrada) {
+        activarCamara(yaHayEntrada);
+      }).verificarEntradaSinSalida();
+    }
+
+    let streamActivo = null;
+    let ubicacionActual = "";
+    let esEntradaPendiente = false;
+
+    function activarCamara(yaHayEntrada) {
+      esEntradaPendiente = !yaHayEntrada;
+      if (streamActivo) return;
+      const video = document.getElementById("video");
+      video.style.display = "block";
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+        .then(function(stream) {
+          video.srcObject = stream;
+          streamActivo = stream;
+          mostrarBotonRegistrar();
+          obtenerUbicacion();
+        })
+        .catch(function(error) {
+          showFancyAlert("No se pudo acceder a la cámara: " + error.message);
+        });
+    }
+
+    function mostrarBotonRegistrar() {
+      if (!document.getElementById("btnRegistrar")) {
+        const btn = document.createElement("button");
+        btn.setAttribute("id", "btnRegistrar");
+        btn.classList.add("btn-orange");
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> REGISTRAR';
+        btn.onclick = () => {
+          btn.disabled = true;
+          capturarFotoYRegistrar();
+        };
+        document.getElementById("mainContent").appendChild(btn);
+      }
+    }
+
+    function obtenerUbicacion() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            ubicacionActual = `${position.coords.latitude}, ${position.coords.longitude}`;
+          },
+          error => {
+            console.warn("Error GPS:", error.message);
+            ubicacionActual = "No disponible";
+          }
+        );
+      } else {
+        ubicacionActual = "No soportado";
+      }
+    }
+
+    function capturarFotoYRegistrar() {
+      const video = document.getElementById("video");
+      if (!video) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const base64Img = reader.result.split(',')[1];
+          if (ubicacionActual === "No disponible" || ubicacionActual === "No soportado" || ubicacionActual === "") {
+            showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
+            stopCamera();
+            return;
+          }
+          const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
+          google.script.run.withSuccessHandler(function(respuesta) {
+            showFancyAlert(respuesta.mensaje);
+            stopCamera();
+            cargarMarcacionesHoy();
+          }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg');
+    }
+
+    function stopCamera() {
+      if (streamActivo) {
+        streamActivo.getTracks().forEach(track => track.stop());
+        streamActivo = null;
+      }
+      const video = document.getElementById("video");
+      video.style.display = "none";
+      const btnRegistrar = document.getElementById("btnRegistrar");
+      if (btnRegistrar) btnRegistrar.remove();
+    }
+
+    /************** PANEL DE ADMINISTRACIÓN Y USUARIOS **************/
+    function mostrarAdminPanel() {
+      document.getElementById("mainContent").classList.remove("visible");
+      document.getElementById("mainContent").classList.add("hidden");
+      setTimeout(() => {
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("adminPanel").classList.add("visible");
+        document.getElementById("usersSection").style.display = "none";
+      }, 300);
+    }
+
+    function mostrarUsersSection() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "block";
+      google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
+    }
+
+    function renderizarUsuarios(lista) {
+      const tbody = document.getElementById("tbodyUsuarios");
+      tbody.innerHTML = "";
+      lista.forEach(usuario => {
+        const tr = document.createElement("tr");
+
+        // Columna de Acciones (íconos)
+        const tdAcciones = document.createElement("td");
+
+        const btnEdit = document.createElement("button");
+        btnEdit.classList.add("btn-icon", "edit");
+        btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+        btnEdit.onclick = () => confirmarEdicionUsuario(usuario);
+
+        const btnDelete = document.createElement("button");
+        btnDelete.classList.add("btn-icon", "delete");
+        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        btnDelete.onclick = () => eliminarUsuario(usuario.dni);
+
+        tdAcciones.appendChild(btnEdit);
+        tdAcciones.appendChild(btnDelete);
+        tr.appendChild(tdAcciones);
+
+        // Nombre Completo
+        const tdNombre = document.createElement("td");
+        tdNombre.textContent = usuario.nombre || "";
+        tr.appendChild(tdNombre);
+
+        // USUARIO (DNI)
+        const tdDni = document.createElement("td");
+        tdDni.textContent = usuario.dni || "";
+        tr.appendChild(tdDni);
+
+        // Contraseña
+        const tdContra = document.createElement("td");
+        tdContra.textContent = usuario.contrasena || "";
+        tr.appendChild(tdContra);
+
+        // Área
+        const tdArea = document.createElement("td");
+        tdArea.textContent = usuario.area || "";
+        tr.appendChild(tdArea);
+
+        // Cargo
+        const tdCargo = document.createElement("td");
+        tdCargo.textContent = usuario.cargo || "";
+        tr.appendChild(tdCargo);
+
+        // Email
+        const tdEmail = document.createElement("td");
+        tdEmail.textContent = usuario.email || "";
+        tr.appendChild(tdEmail);
+
+        // Nivel
+        const tdNivel = document.createElement("td");
+        tdNivel.textContent = usuario.nivel || 0;
+        tr.appendChild(tdNivel);
+
+        // HorasExtras
+        const tdHoras = document.createElement("td");
+        tdHoras.textContent = usuario.horasExtras || 0;
+        tr.appendChild(tdHoras);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Confirmar Edición con FancyConfirm
+    function confirmarEdicionUsuario(usuario) {
+      showFancyConfirm(
+        `¿Está seguro de que desea editar al usuario con DNI: ${usuario.dni}?`,
+        () => {
+          editarUsuario(usuario);
+        },
+        () => {
+          console.log("Edición cancelada");
+        }
+      );
+    }
+
+    function editarUsuario(usuario) {
+      document.getElementById("usuarioDni").value = usuario.dni;
+      document.getElementById("nombreCompleto").value = usuario.nombre;
+      document.getElementById("area").value = usuario.area;
+      document.getElementById("cargo").value = usuario.cargo;
+      document.getElementById("email").value = usuario.email;
+      document.getElementById("contrasenaUsuario").value = usuario.contrasena;
+      document.getElementById("nivel").value = usuario.nivel;
+      document.getElementById("horasExtras").value = usuario.horasExtras;
+    }
+
+    // Eliminar Usuario con FancyConfirm
+    function eliminarUsuario(dni) {
+      showFancyConfirm(
+        `¿Está seguro de que desea eliminar al usuario con DNI: ${dni}?\nEsta acción no se puede deshacer.`,
+        () => {
+          google.script.run.withSuccessHandler((exito) => {
+            if (exito) {
+              showFancyAlert("Usuario eliminado correctamente.");
+            } else {
+              showFancyAlert(`No se encontró el usuario con DNI: ${dni}.`);
+            }
+            google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
+          }).eliminarUsuario(dni);
+        },
+        () => {
+          console.log("Eliminación cancelada");
+        }
+      );
+    }
+
+    function limpiarFormulario() {
+      document.getElementById("usuarioDni").value = "";
+      document.getElementById("nombreCompleto").value = "";
+      document.getElementById("area").value = "";
+      document.getElementById("cargo").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("contrasenaUsuario").value = "";
+      document.getElementById("nivel").value = "";
+      document.getElementById("horasExtras").value = "";
+    }
+
+    function guardarUsuario() {
+      const dni = document.getElementById("usuarioDni").value.trim();
+      const nombre = document.getElementById("nombreCompleto").value.trim();
+      const area = document.getElementById("area").value.trim();
+      const cargo = document.getElementById("cargo").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const contrasena = document.getElementById("contrasenaUsuario").value.trim();
+      const nivel = document.getElementById("nivel").value.trim();
+      const horasExtras = document.getElementById("horasExtras").value.trim();
+
+      if (!/^\d{8}$/.test(dni)) {
+        showFancyAlert("El DNI debe ser un número de 8 dígitos.");
+        return;
+      }
+      if (!/^\d{8}$/.test(contrasena)) {
+        showFancyAlert("La contraseña debe tener exactamente 8 dígitos numéricos.");
+        return;
+      }
+
+      const userObj = {
+        dni,
+        nombre,
+        area,
+        cargo,
+        email,
+        contrasena,
+        nivel: parseInt(nivel, 10),
+        horasExtras: parseInt(horasExtras, 10)
+      };
+
+      const guardarBtn = document.getElementById("guardarBtn");
+      guardarBtn.disabled = true;
+      google.script.run
+        .withSuccessHandler(() => {
+          showFancyAlert("Usuario guardado correctamente.");
+          limpiarFormulario();
+          google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
+          guardarBtn.disabled = false;
+        })
+        .withFailureHandler(err => {
+          showFancyAlert("Error al guardar usuario: " + err.message);
+          guardarBtn.disabled = false;
+        })
+        .guardarUsuarioEnHoja(userObj);
+    }
+
+    /************** CERRAR SESIÓN **************/
+    function cerrarSesion() {
+      google.script.run.withSuccessHandler(() => {
+        document.getElementById("adminPanel").classList.remove("visible");
+        document.getElementById("adminPanel").classList.add("hidden");
+        document.getElementById("mainContent").classList.remove("visible");
+        document.getElementById("mainContent").classList.add("hidden");
+        setTimeout(() => {
+          document.getElementById("adminPanel").style.display = "none";
+          document.getElementById("mainContent").style.display = "none";
+          document.getElementById("loginDiv").style.display = "block";
+          document.getElementById("loginDiv").classList.add("visible");
+          document.getElementById("usuario").value = "";
+          document.getElementById("contrasena").value = "";
+        }, 300);
+      }).cerrarSesion();
+    }
+
+    /************** FANCY ALERT (Mensaje) **************/
+    function showFancyAlert(message) {
+      const overlay = document.getElementById("fancyAlertOverlay");
+      const msg = document.getElementById("fancyAlertMessage");
+      msg.textContent = message;
+      overlay.classList.add("active");
+    }
+    function closeFancyAlert() {
+      const overlay = document.getElementById("fancyAlertOverlay");
+      overlay.classList.remove("active");
+    }
+    document.getElementById("fancyAlertClose").addEventListener("click", closeFancyAlert);
+
+    /************** FANCY CONFIRM (Confirmación personalizada) **************/
+    function showFancyConfirm(message, onYes, onNo) {
+      const overlay = document.getElementById("fancyConfirmOverlay");
+      const msg = document.getElementById("fancyConfirmMessage");
+      msg.textContent = message;
+      overlay.classList.add("active");
+      const btnYes = document.getElementById("fancyConfirmYes");
+      const btnNo = document.getElementById("fancyConfirmNo");
+      btnYes.onclick = null;
+      btnNo.onclick = null;
+      btnYes.onclick = () => {
+        overlay.classList.remove("active");
+        if (typeof onYes === "function") onYes();
+      };
+      btnNo.onclick = () => {
+        overlay.classList.remove("active");
+        if (typeof onNo === "function") onNo();
+      };
+    }
+
+    /************** ESTADÍSTICAS Y REPORTES **************/
+    function mostrarEstadisticas() {
+      document.getElementById("adminPanel").classList.remove("hidden");
+      document.getElementById("adminPanel").classList.add("visible");
+      document.getElementById("usersSection").style.display = "none";
+      google.script.run.withSuccessHandler(function(stats) {
+        let mensaje = "Estadísticas generales:\n";
+        mensaje += "Total Registros: " + stats.totalRegistros + "\n";
+        mensaje += "Total Entradas: " + stats.totalEntradas + "\n";
+        mensaje += "Total Salidas: " + stats.totalSalidas + "\n\n";
+        mensaje += "Registros por Usuario:\n";
+        for (let dni in stats.registrosPorUsuario) {
+          mensaje += dni + ": " + stats.registrosPorUsuario[dni] + "\n";
+        }
+        showFancyAlert(mensaje);
+      }).obtenerEstadisticas();
+    }
+
+    function reporteGeneral() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "none";
+      showFancyAlert("Función de Reporte General en construcción...");
+    }
+
+    function reporteIndividual() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "none";
+      showFancyAlert("Función de Reporte Individual en construcción...");
+    }
+
+    function registroAsistencia() {
+      showFancyAlert("Función de Registro de Asistencias en construcción...");
+    }
+  </script>
+</body>
+</html>
