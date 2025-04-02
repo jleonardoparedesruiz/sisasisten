@@ -1017,16 +1017,24 @@
     }
 
     // Función para mostrar la sección de Geoballas
-    function mostrarGeoballas() {
-      document.getElementById("adminPanel").style.display = "block";
-      document.getElementById("usersSection").style.display = "none";
-      document.getElementById("geoballasSection").style.display = "block";
-      google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
-      // Reinicializar el mapa para geoballas
-      if (typeof initMap === "function") {
-        initMap();
-      }
-    }
+  function mostrarGeoballas() {
+  document.getElementById("adminPanel").style.display = "block";
+  document.getElementById("usersSection").style.display = "none";
+  document.getElementById("geoballasSection").style.display = "block";
+  google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
+  
+  // Reinicializar el mapa para geoballas y forzar resize
+  if (typeof initMap === "function") {
+    initMap();
+  }
+  // Espera un poco para que el contenedor se muestre y luego dispara el resize
+  setTimeout(function() {
+    google.maps.event.trigger(map, "resize");
+    // Opcional: recéntralo en la posición actual o en una predeterminada
+    map.setCenter({ lat: -8.109, lng: -79.021 }); // O la posición deseada
+  }, 100);
+}
+
 
     function renderizarUsuarios(lista) {
       const tbody = document.getElementById("tbodyUsuarios");
@@ -1187,26 +1195,33 @@ function editarGeoballa(geo) {
   document.getElementById("geoballaRadio").value = geo.radio;
   
   if (map) {
-    const parts = geo.ubicacion.split(",");
-    const lat = parseFloat(parts[0].trim());
-    const lng = parseFloat(parts[1].trim());
-    const newPos = { lat, lng };
+    var parts = geo.ubicacion.split(",");
+    var lat = parseFloat(parts[0].trim());
+    var lng = parseFloat(parts[1].trim());
+    var newPos = { lat, lng };
 
-    // Si no existe un marker global, créalo
+    // Si no existe el marcador, se crea con el logo; de lo contrario, se actualiza
     if (!marker) {
       marker = new google.maps.Marker({
         position: newPos,
         map: map,
+        icon: {
+          url: "https://i.imgur.com/tud5XMS.png",
+          scaledSize: new google.maps.Size(32, 32)
+        }
       });
     } else {
-      // Si ya existe, solo mueve el marcador
       marker.setPosition(newPos);
     }
+
+    // Actualizar o crear el círculo en la posición y con el radio especificado
+    updateCircle(newPos);
 
     // Centrar el mapa en la nueva posición
     map.setCenter(newPos);
   }
 }
+
 
     function eliminarGeoballa(lugar) {
       showFancyConfirm(
@@ -1386,31 +1401,82 @@ function editarGeoballa(geo) {
     /* ============ Funciones para el mapa de Geoballas ============ */
     var map;  // Variable global para el mapa
     var marker; // Variable global para el marcador
+    var circle; // Variable global para el círculo
 
-    function initMap() {
-      // Coordenadas iniciales (por ejemplo, centro de Piura)
-     const defaultLatLng = { lat: -8.109, lng: -79.021 };
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: defaultLatLng,
-        zoom: 15,
-      });
-      
-      // Si ya existe un marcador, se reutiliza, sino se crea uno al hacer clic
-      map.addListener("click", (e) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        if (!marker) {
-          marker = new google.maps.Marker({
-            position: { lat, lng },
-            map: map,
-          });
-        } else {
-          marker.setPosition({ lat, lng });
-        }
-        // Actualizar el campo de Ubicación con las coordenadas obtenidas
-        document.getElementById("geoballaUbicacion").value = lat + "," + lng;
-      });
+function updateCircle(center) {
+  // Obtener el valor del radio desde el campo de entrada (puedes definir un valor por defecto si no se ingresa nada)
+  var radioInput = document.getElementById("geoballaRadio").value;
+  var radio = parseFloat(radioInput);
+  if (isNaN(radio)) radio = 50; // Valor predeterminado en metros
+
+  // Si el círculo aún no existe, se crea; de lo contrario, se actualiza su centro y radio
+  if (!circle) {
+    circle = new google.maps.Circle({
+      map: map,
+      center: center,
+      radius: radio,
+      fillColor: "#FF0000",     // Color de relleno
+      fillOpacity: 0.2,         // Opacidad del relleno
+      strokeColor: "#FF0000",   // Color del borde
+      strokeOpacity: 0.8,       // Opacidad del borde
+      strokeWeight: 2           // Grosor del borde
+    });
+  } else {
+    circle.setCenter(center);
+    circle.setRadius(radio);
+  }
+}
+
+
+function initMap() {
+  const defaultLatLng = { lat: -8.109, lng: -79.021 }; // Ejemplo: Trujillo, Perú
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: defaultLatLng,
+    zoom: 15,
+  });
+
+  // Si deseas crear un marcador inicial, también lo haces con el icono personalizado:
+  marker = new google.maps.Marker({
+    position: defaultLatLng,
+    map: map,
+    icon: {
+      url: "https://i.imgur.com/tud5XMS.png",
+      scaledSize: new google.maps.Size(32, 32)
     }
+  });
+
+  // Inicializar el círculo con la posición por defecto
+  updateCircle(defaultLatLng);
+
+  // Escuchar clics en el mapa para actualizar el marcador y el círculo
+  map.addListener("click", (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const newPos = { lat, lng };
+
+    // Actualizar o crear el marcador
+    if (!marker) {
+      marker = new google.maps.Marker({
+        position: newPos,
+        map: map,
+        icon: {
+          url: "https://i.imgur.com/tud5XMS.png",
+          scaledSize: new google.maps.Size(32, 32)
+        }
+      });
+    } else {
+      marker.setPosition(newPos);
+    }
+
+    // Actualizar el círculo con la nueva posición
+    updateCircle(newPos);
+
+    // Actualizar el campo de ubicación en el formulario
+    document.getElementById("geoballaUbicacion").value = lat + "," + lng;
+  });
+}
+
+
   </script>
   <!-- Incluir el script de Google Maps con tu API key -->
   <script async
