@@ -125,62 +125,58 @@ function obtenerMarcacionesHoy() {
  */
 function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
   try {
-    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
-    if (!usuario) {
-      return { mensaje: "Usuario no autenticado." };
-    }
+    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    if (!usuario) return { mensaje: "Usuario no autenticado." };
 
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
 
-    // Verificar si el usuario se encuentra en una geoballa autorizada
-    var lugar = verificarGeoballa(ubicacion);
-    if (!lugar) {
-      return { mensaje: "No se encuentra en un centro de labor autorizado para marcar asistencia." };
+    const validacion = obtenerValidacionHorario(tipoEvento);
+    if (!validacion.permitido) return { mensaje: validacion.mensaje };
+
+    const lugar = verificarGeoballa(ubicacion);
+    if (!lugar || !lugar.dentro) {
+      return { mensaje: `Estás a ${Math.round(lugar.distancia)} metros de "${lugar.lugar}".\nRadio permitido: ${lugar.radio} m.\nNo puedes marcar asistencia.` };
     }
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hojaUsuarios = ss.getSheetByName("Usuarios");
-    var hojaRegistros = ss.getSheetByName("BDregistros");
-    var datosUsuarios = hojaUsuarios.getDataRange().getValues();
-    var nombre = "Desconocido";
-    var userTrimmed = usuario.trim();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaUsuarios = ss.getSheetByName("Usuarios");
+    const hojaRegistros = ss.getSheetByName("BDregistros");
+    const datosUsuarios = hojaUsuarios.getDataRange().getValues();
+    const timeZone = ss.getSpreadsheetTimeZone();
+    const now = new Date();
 
-    for (var i = 1; i < datosUsuarios.length; i++) {
+    const fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
+    const horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
+
+    let nombre = "Desconocido";
+    const userTrimmed = usuario.trim();
+    for (let i = 1; i < datosUsuarios.length; i++) {
       if (datosUsuarios[i][0].toString().trim() === userTrimmed) {
         nombre = datosUsuarios[i][1];
         break;
       }
     }
 
-    var timeZone = ss.getSpreadsheetTimeZone();
-    var now = new Date();
-    var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
-    var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
-
-    // Evitar duplicados
-    var datosRegistros = hojaRegistros.getDataRange().getValues();
-    for (var i = 1; i < datosRegistros.length; i++) {
-      var dniFila = datosRegistros[i][0].toString().trim();
-      var valorFecha = datosRegistros[i][2];
-      var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
-        ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-        : valorFecha.toString().trim();
-      var tipoFila = datosRegistros[i][4].toString().trim();
-
+    const registros = hojaRegistros.getDataRange().getValues();
+    for (let i = 1; i < registros.length; i++) {
+      const fila = registros[i];
+      const dniFila = fila[0].toString().trim();
+      const tipoFila = fila[4].toString().trim();
+      const fechaFila = fila[2] instanceof Date
+        ? Utilities.formatDate(fila[2], timeZone, "yyyy-MM-dd")
+        : fila[2];
       if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
-        return { mensaje: "Ya has registrado " + tipoEvento + " hoy." };
+        return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
       }
     }
 
-    // Subir imagen a Drive
-    var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
-    var blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, userTrimmed + "_" + fechaHoy + "_" + horaAhora + ".jpg");
-    var archivo = carpeta.createFile(blob);
-    var linkImagen = archivo.getUrl();
+    const carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
+    const blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
+    const archivo = carpeta.createFile(blob);
+    const linkImagen = archivo.getUrl();
 
-    // Registrar asistencia
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -194,17 +190,19 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     ]);
 
     return {
-      mensaje: "Se registró su " + tipoEvento.toLowerCase() + " en: " + lugar.lugar + ".",
+      mensaje: `Se registró su ${tipoEvento.toLowerCase()} en: ${lugar.lugar}.`,
       evento: tipoEvento,
       fecha: fechaHoy,
-      hora: horaAhora
+      hora: horaAhora,
+      lugar: lugar.lugar
     };
 
   } catch (error) {
     Logger.log("Error en subirYRegistrarAsistencia: " + error);
-    return { mensaje: "Error al registrar asistencia." };
+    return { mensaje: "Error al registrar asistencia: " + error };
   }
 }
+
 /************** GESTIÓN DE USUARIOS **************/
 function guardarUsuarioEnHoja(userObj) {
   try {
@@ -518,6 +516,76 @@ function obtenerGeoballas() {
     Logger.log("Error en obtenerGeoballas: " + error);
     return [];
   }
+}
+
+function validarHorario(tipoEvento) {
+  try {
+    const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    if (!usuario) return { permitido: false, mensaje: "Usuario no autenticado." };
+
+    return obtenerValidacionHorario(tipoEvento);
+
+  } catch (e) {
+    Logger.log("Error en validarHorario: " + e);
+    return { permitido: false, mensaje: "Error al validar horario: " + e };
+  }
+}
+
+function obtenerValidacionHorario(tipoEvento) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hojaHorarios = ss.getSheetByName("Horarios");
+  const horarios = hojaHorarios.getDataRange().getValues();
+  const timeZone = ss.getSpreadsheetTimeZone();
+  const now = new Date();
+
+  const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+  const diaSemana = dias[now.getDay()];
+  
+  let horaPermitida = null;
+  let toleranciaMin = 0;
+
+  for (let i = 1; i < horarios.length; i++) {
+    if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
+      if (tipoEvento === "Entrada") {
+        horaPermitida = horarios[i][1];
+      } else if (tipoEvento === "Salida") {
+        horaPermitida = horarios[i][2];
+      }
+      toleranciaMin = parseInt(horarios[i][5]) || 0;
+      break;
+    }
+  }
+
+  if (!horaPermitida) {
+    return { permitido: false, mensaje: `No hay horario configurado para ${diaSemana}.` };
+  }
+
+  // ✅ Normalizar hora si es Date
+  if (horaPermitida instanceof Date) {
+    horaPermitida = Utilities.formatDate(horaPermitida, timeZone, "HH:mm");
+  }
+
+  const horaActual = now.getHours() + now.getMinutes() / 60;
+  const [h, m] = horaPermitida.toString().split(":");
+  const horaEsperada = parseInt(h) + (parseInt(m) || 0) / 60;
+  const horaLimite = horaEsperada + (toleranciaMin / 60);
+
+  if (tipoEvento === "Entrada" && horaActual > horaLimite) {
+    const minutosTarde = Math.round((horaActual - horaEsperada) * 60);
+    return {
+      permitido: false,
+      mensaje: `Llegaste con ${minutosTarde} minutos de retraso respecto al horario permitido (${horaPermitida} + ${toleranciaMin} min).`
+    };
+  }
+
+  if (tipoEvento === "Salida" && horaActual < horaEsperada) {
+    return {
+      permitido: false,
+      mensaje: `Aún no es hora de salida. Puedes marcar a partir de las ${horaPermitida}.`
+    };
+  }
+
+  return { permitido: true };
 }
  
 
