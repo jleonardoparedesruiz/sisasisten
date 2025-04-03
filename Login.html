@@ -993,7 +993,7 @@ function capturarFotoYRegistrar() {
 
         google.script.run.withSuccessHandler(function (respuesta) {
           if (respuesta.lugar) {
-            showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${respuesta.lugar}`);
+            showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${respuesta.lugar.lugar}`);
           } else {
             showFancyAlert(respuesta.mensaje);
           }
