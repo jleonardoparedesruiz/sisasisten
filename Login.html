@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
@@ -973,35 +973,42 @@ function capturarFotoYRegistrar() {
         return;
       }
 
-      // Verificamos si está dentro de alguna geoballa
-      google.script.run.withSuccessHandler(function (geoResult) {
-        if (!geoResult) {
-          showFancyAlert("No se encontró ninguna zona geográfica autorizada para marcar.");
+      const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
+
+      // 🧠 PRIMERO: Validar horario
+      google.script.run.withSuccessHandler(function (respuesta) {
+        if (!respuesta.permitido) {
+          showFancyAlert(respuesta.mensaje);
           stopCamera();
           return;
         }
 
-        // Si está fuera del área
-        if (!geoResult.dentro) {
-          showFancyAlert(`Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`);
-          stopCamera();
-          return;
-        }
-
-        // Si está dentro, procedemos a registrar asistencia
-        const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
-
-        google.script.run.withSuccessHandler(function (respuesta) {
-          if (respuesta.lugar) {
-            showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${respuesta.lugar.lugar}`);
-          } else {
-            showFancyAlert(respuesta.mensaje);
+        // 🧠 SEGUNDO: Validar geoballa
+        google.script.run.withSuccessHandler(function (geoResult) {
+          if (!geoResult || !geoResult.dentro) {
+            const msg = geoResult
+              ? `Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`
+              : "No se encontró ninguna zona geográfica autorizada para marcar.";
+            showFancyAlert(msg);
+            stopCamera();
+            return;
           }
-          stopCamera();
-          cargarMarcacionesHoy();
-        }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
 
-      }).verificarGeoballa(ubicacionActual);
+          // ✅ TERCERO: Subir y registrar si todo está OK
+          google.script.run.withSuccessHandler(function (resFinal) {
+            if (resFinal.lugar) {
+              showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${resFinal.lugar}`);
+            } else {
+              showFancyAlert(resFinal.mensaje);
+            }
+            stopCamera();
+            cargarMarcacionesHoy();
+          }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
+
+        }).verificarGeoballa(ubicacionActual);
+
+      }).validarHorario(tipoEvento); // 👈 esto es vital
+
     };
     reader.readAsDataURL(blob);
   }, 'image/jpeg');
