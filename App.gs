@@ -129,52 +129,58 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     if (!usuario) {
       return { mensaje: "Usuario no autenticado." };
     }
+
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
+
     // Verificar si el usuario se encuentra en una geoballa autorizada
     var lugar = verificarGeoballa(ubicacion);
     if (!lugar) {
       return { mensaje: "No se encuentra en un centro de labor autorizado para marcar asistencia." };
     }
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaUsuarios = ss.getSheetByName("Usuarios");
     var hojaRegistros = ss.getSheetByName("BDregistros");
     var datosUsuarios = hojaUsuarios.getDataRange().getValues();
     var nombre = "Desconocido";
     var userTrimmed = usuario.trim();
+
     for (var i = 1; i < datosUsuarios.length; i++) {
       if (datosUsuarios[i][0].toString().trim() === userTrimmed) {
         nombre = datosUsuarios[i][1];
         break;
       }
     }
+
     var timeZone = ss.getSpreadsheetTimeZone();
     var now = new Date();
     var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
     var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
-    // Evitar duplicados: si ya se registró este tipo hoy, no registrar de nuevo.
+
+    // Evitar duplicados
     var datosRegistros = hojaRegistros.getDataRange().getValues();
     for (var i = 1; i < datosRegistros.length; i++) {
       var dniFila = datosRegistros[i][0].toString().trim();
-      var fechaFila = "";
       var valorFecha = datosRegistros[i][2];
-      if (valorFecha instanceof Date && !isNaN(valorFecha)) {
-        fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
-      } else {
-        fechaFila = valorFecha.toString().trim();
-      }
+      var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
+        ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+        : valorFecha.toString().trim();
       var tipoFila = datosRegistros[i][4].toString().trim();
+
       if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
         return { mensaje: "Ya has registrado " + tipoEvento + " hoy." };
       }
     }
+
     // Subir imagen a Drive
     var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
     var blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, userTrimmed + "_" + fechaHoy + "_" + horaAhora + ".jpg");
     var archivo = carpeta.createFile(blob);
     var linkImagen = archivo.getUrl();
-    // Registrar asistencia incluyendo el nombre del centro (lugar)
+
+    // Registrar asistencia
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -183,16 +189,22 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       tipoEvento,
       "Ninguna",
       ubicacion,
-      lugar,
+      lugar.lugar,
       linkImagen
     ]);
-    return { mensaje: "Se registró su " + tipoEvento.toLowerCase() + " en: " + lugar + ".", evento: tipoEvento, fecha: fechaHoy, hora: horaAhora };
+
+    return {
+      mensaje: "Se registró su " + tipoEvento.toLowerCase() + " en: " + lugar.lugar + ".",
+      evento: tipoEvento,
+      fecha: fechaHoy,
+      hora: horaAhora
+    };
+
   } catch (error) {
     Logger.log("Error en subirYRegistrarAsistencia: " + error);
     return { mensaje: "Error al registrar asistencia." };
   }
 }
-
 /************** GESTIÓN DE USUARIOS **************/
 function guardarUsuarioEnHoja(userObj) {
   try {
@@ -373,45 +385,52 @@ function verificarGeoballa(ubicacion) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
-    var data = geoSheet.getDataRange().getValues(); // Incluye encabezado
+    var data = geoSheet.getDataRange().getValues();
+
+    var geoballaMasCercana = null;
+    var distanciaMinima = Infinity;
 
     for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      var lugar = row[0];
-      var ubicacionGeo = row[1];
-      var radio = parseFloat(row[2]);
+      var lugar = data[i][0];
+      var ubicacionGeo = data[i][1];
+      var radio = parseFloat(data[i][2]);
+
       if (!ubicacionGeo || isNaN(radio)) continue;
 
-      var partsGeo = ubicacionGeo.split(",");
-      if (partsGeo.length < 2) continue;
-      var latGeo = parseFloat(partsGeo[0].trim());
-      var lngGeo = parseFloat(partsGeo[1].trim());
+      var geoParts = ubicacionGeo.split(",");
+      var latGeo = parseFloat(geoParts[0].trim());
+      var lngGeo = parseFloat(geoParts[1].trim());
+
       if (isNaN(latGeo) || isNaN(lngGeo)) continue;
 
       var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
-      Logger.log("Geoballa " + lugar + ": Distancia = " + distancia + " m, Radio = " + radio + " m");
+
+      Logger.log(`🛰️ Revisando ${lugar} - Distancia: ${distancia} m | Radio: ${radio} m`);
 
       if (distancia <= radio) {
         return {
-          dentro: true,
           lugar: lugar,
+          dentro: true,
           distancia: Math.round(distancia),
           radio: radio
         };
-      } else {
-        // Si está fuera, igual devolvemos info del lugar más cercano (primero que encuentra)
-        return {
-          dentro: false,
+      }
+
+      // Guardamos la más cercana (aunque esté fuera del radio)
+      if (distancia < distanciaMinima) {
+        distanciaMinima = distancia;
+        geoballaMasCercana = {
           lugar: lugar,
+          dentro: false,
           distancia: Math.round(distancia),
           radio: radio
         };
       }
     }
 
-    return null; // No se encontró ninguna geoballa
+    return geoballaMasCercana; // Si no estuvo dentro, igual devolvemos info
   } catch (error) {
-    Logger.log("Error en verificarGeoballa: " + error);
+    Logger.log("⚠️ Error en verificarGeoballa: " + error);
     return null;
   }
 }
@@ -500,6 +519,7 @@ function obtenerGeoballas() {
     return [];
   }
 }
+ 
 
 
 
