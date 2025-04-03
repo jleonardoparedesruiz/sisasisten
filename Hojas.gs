@@ -1,7 +1,3 @@
-/**
- * Crea o actualiza las hojas y establece los encabezados y datos iniciales.
- * Utiliza operaciones en bloque para optimizar la escritura y añade validación de datos.
- */
 function crearHojasYColumnas() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -9,14 +5,8 @@ function crearHojasYColumnas() {
       {
         nombre: "Usuarios",
         columnas: [
-          "USUARIO",           // DNI
-          "Nombre Completo",
-          "Área",
-          "Cargo",
-          "Email",
-          "Contraseña",
-          "Nivel",
-          "HorasExtras"
+          "USUARIO", "Nombre Completo", "Área", "Cargo",
+          "Email", "Contraseña", "Nivel", "HorasExtras"
         ],
         datos: [
           ["74047479", "Julio Leonardo Paredes Ruiz", "administrativa", "supervisor", "jleonardoparedesruiz@gmail.com", "74047479", 1, 0],
@@ -25,18 +15,7 @@ function crearHojasYColumnas() {
       },
       {
         nombre: "BDregistros",
-        // Se agregó la columna "Lugar" después de "Ubicación"
-        columnas: [
-          "DNI",
-          "Nombre",
-          "Fecha",
-          "Hora",
-          "Tipo",
-          "Observaciones",
-          "Ubicación",
-          "Lugar",
-          "Link Imagen"
-        ]
+        columnas: ["DNI", "Nombre", "Fecha", "Hora", "Tipo", "Observaciones", "Ubicación", "Lugar", "Link Imagen"]
       },
       {
         nombre: "Correos",
@@ -49,12 +28,8 @@ function crearHojasYColumnas() {
       {
         nombre: "Horarios",
         columnas: [
-          "DIA",
-          "Hora ingreso",
-          "Hora salida",
-          "Hora refrigerio inicio",
-          "Hora refrigerio salida",
-          "Tolerancia en minutos"
+          "DIA", "Hora ingreso", "Hora salida",
+          "Hora refrigerio inicio", "Hora refrigerio salida", "Tolerancia en minutos"
         ],
         datos: [
           ["Lunes",     "08:00", "17:00", "12:00", "13:00", 15],
@@ -67,35 +42,35 @@ function crearHojasYColumnas() {
         ]
       },
       {
-        // Nueva hoja para geoballas, que contendrá los puntos autorizados
         nombre: "geoballa",
-        columnas: [
-          "Lugar",       // Nombre del centro autorizado
-          "Ubicacion",   // Coordenadas (latitud, longitud)
-          "Radio (m)"    // Radio de tolerancia en metros
-        ]
+        columnas: ["Lugar", "Ubicacion", "Radio (m)"]
       }
     ];
-    
+
     hojas.forEach(config => {
-      // Obtener o crear la hoja
       let hoja = ss.getSheetByName(config.nombre);
       if (!hoja) {
         hoja = ss.insertSheet(config.nombre);
       } else {
         hoja.clearContents();
       }
-      
+
       const headers = config.columnas;
-      // Escribir encabezados en una sola operación
       hoja.getRange(1, 1, 1, headers.length).setValues([headers]);
-      
+
       if (config.datos && config.datos.length > 0) {
-        // Filtrar filas que coincidan en longitud con los encabezados
         const validDatos = config.datos.filter(row => row.length === headers.length);
         if (validDatos.length > 0) {
           hoja.getRange(2, 1, validDatos.length, headers.length).setValues(validDatos);
         }
+      }
+
+      // 👉 Aplicar formato especial si es la hoja de horarios
+      if (config.nombre === "Horarios") {
+        // Formato hora para columnas B a E (2 a 5)
+        hoja.getRange("B2:E").setNumberFormat("hh:mm");
+        // Formato número entero para columna F (6)
+        hoja.getRange("F2:F").setNumberFormat("0");
       }
     });
   } catch (error) {
@@ -103,3 +78,4 @@ function crearHojasYColumnas() {
     throw error;
   }
 }
+
