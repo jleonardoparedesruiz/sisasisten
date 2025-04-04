@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
@@ -975,7 +975,7 @@ function capturarFotoYRegistrar() {
 
       const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
 
-      // 🧠 PRIMERO: Validar horario
+      // Paso 1: Validar horario
       google.script.run.withSuccessHandler(function (respuesta) {
         if (!respuesta.permitido) {
           showFancyAlert(respuesta.mensaje);
@@ -983,7 +983,7 @@ function capturarFotoYRegistrar() {
           return;
         }
 
-        // 🧠 SEGUNDO: Validar geoballa
+        // Paso 2: Validar geoballa
         google.script.run.withSuccessHandler(function (geoResult) {
           if (!geoResult || !geoResult.dentro) {
             const msg = geoResult
@@ -994,21 +994,42 @@ function capturarFotoYRegistrar() {
             return;
           }
 
-          // ✅ TERCERO: Subir y registrar si todo está OK
+          // Paso 3: Subir imagen y registrar asistencia
           google.script.run.withSuccessHandler(function (resFinal) {
             if (resFinal.lugar) {
-              showFancyAlert(`Se registró su ${tipoEvento.toLowerCase()} en: ${resFinal.lugar}`);
+              let icono = "✅";
+              let titulo = "¡Registro exitoso!";
+              const mensaje = resFinal.mensaje || "";
+
+              if (mensaje.toLowerCase().includes("puntual")) {
+                icono = "⏰";
+                titulo = "Entrada puntual";
+              } else if (mensaje.toLowerCase().includes("tarde")) {
+                icono = "⚠️";
+                titulo = "Entrada tardía";
+              } else if (tipoEvento === "Salida") {
+                icono = "👋";
+                titulo = "Salida registrada";
+              }
+
+              // Extraer frase si hay salto de línea
+              const partes = mensaje.split("\n");
+              const descripcion = partes[0] || "";
+              const frase = partes.slice(1).join("\n").trim();
+
+              const mensajeFinal = `${icono} ${titulo}\n📍 Lugar: ${resFinal.lugar}\n\n${frase || "¡Buen trabajo!"}`;
+              showFancyAlert(mensajeFinal);
             } else {
               showFancyAlert(resFinal.mensaje);
             }
+
             stopCamera();
             cargarMarcacionesHoy();
           }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
 
         }).verificarGeoballa(ubicacionActual);
 
-      }).validarHorario(tipoEvento); // 👈 esto es vital
-
+      }).validarHorario(tipoEvento);
     };
     reader.readAsDataURL(blob);
   }, 'image/jpeg');
