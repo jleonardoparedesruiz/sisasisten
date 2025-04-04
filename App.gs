@@ -189,8 +189,35 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       linkImagen
     ]);
 
+    // 🎯 Elegir tipo de frase: puntual / tarde / salida
+    let tipoFrase = "puntual";
+    if (tipoEvento === "Salida") {
+      tipoFrase = "salida";
+    } else if (tipoEvento === "Entrada") {
+      const hojaHorarios = ss.getSheetByName("Horarios");
+      const horarios = hojaHorarios.getDataRange().getValues();
+      const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+      const diaSemana = dias[now.getDay()];
+      for (let i = 1; i < horarios.length; i++) {
+        if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
+          const horaIngreso = horarios[i][1];
+          const toleranciaMin = parseInt(horarios[i][5]) || 0;
+          const horaEsperada = new Date(now);
+          const [h, m] = horaIngreso.toString().split(":");
+          horaEsperada.setHours(parseInt(h), parseInt(m), 0, 0);
+          const limite = new Date(horaEsperada.getTime() + toleranciaMin * 60000);
+          if (now > limite) {
+            tipoFrase = "tarde";
+          }
+          break;
+        }
+      }
+    }
+
+    const frase = obtenerFraseMotivacional(tipoFrase);
+
     return {
-      mensaje: `Se registró su ${tipoEvento.toLowerCase()} en: ${lugar.lugar}.`,
+      mensaje: `✅ Se registró su ${tipoEvento.toLowerCase()} en: ${lugar.lugar}.\n${frase}`,
       evento: tipoEvento,
       fecha: fechaHoy,
       hora: horaAhora,
@@ -570,12 +597,25 @@ function obtenerValidacionHorario(tipoEvento) {
   const horaEsperada = parseInt(h) + (parseInt(m) || 0) / 60;
   const horaLimite = horaEsperada + (toleranciaMin / 60);
 
-  if (tipoEvento === "Entrada" && horaActual > horaLimite) {
-    const minutosTarde = Math.round((horaActual - horaEsperada) * 60);
-    return {
-      permitido: false,
-      mensaje: `Llegaste con ${minutosTarde} minutos de retraso respecto al horario permitido (${horaPermitida} + ${toleranciaMin} min).`
-    };
+  if (tipoEvento === "Entrada") {
+    const margenAnticipado = 15 / 60; // 15 minutos antes
+    const horaMinima = horaEsperada - margenAnticipado;
+
+    if (horaActual < horaMinima) {
+      const minutosFaltantes = Math.round((horaMinima - horaActual) * 60);
+      return {
+        permitido: false,
+        mensaje: `Aún no puedes marcar. Espera ${minutosFaltantes} minuto(s) más (desde las ${Utilities.formatDate(new Date(now.getTime() + minutosFaltantes * 60000), timeZone, "HH:mm")}).`
+      };
+    }
+
+    if (horaActual > horaLimite) {
+      const minutosTarde = Math.round((horaActual - horaEsperada) * 60);
+      return {
+        permitido: false,
+        mensaje: `Llegaste con ${minutosTarde} minuto(s) de retraso respecto al horario permitido (${horaPermitida} + ${toleranciaMin} min).`
+      };
+    }
   }
 
   if (tipoEvento === "Salida" && horaActual < horaEsperada) {
@@ -586,6 +626,36 @@ function obtenerValidacionHorario(tipoEvento) {
   }
 
   return { permitido: true };
+}
+
+
+function obtenerFraseMotivacional(tipoFrase) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("Frases");
+    if (!hoja) return "¡Buen trabajo!";
+
+    const datos = hoja.getDataRange().getValues();
+    const encabezado = datos[0];
+    const idxFrase = encabezado.indexOf("Frase");
+    const idxTipo = encabezado.indexOf("Tipo");
+
+    if (idxFrase === -1 || idxTipo === -1) return "¡Buen trabajo!";
+
+    const frasesFiltradas = datos.slice(1).filter(fila =>
+      fila[idxFrase] && fila[idxTipo] &&
+      fila[idxTipo].toString().toLowerCase() === tipoFrase.toLowerCase()
+    ).map(fila => fila[idxFrase]);
+
+    if (frasesFiltradas.length === 0) return "¡Buen trabajo!";
+    
+    const index = Math.floor(Math.random() * frasesFiltradas.length);
+    return frasesFiltradas[index];
+
+  } catch (e) {
+    Logger.log("Error en obtenerFraseMotivacional: " + e);
+    return "¡Buen trabajo!";
+  }
 }
  
 
