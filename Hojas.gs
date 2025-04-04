@@ -44,6 +44,47 @@ function crearHojasYColumnas() {
       {
         nombre: "geoballa",
         columnas: ["Lugar", "Ubicacion", "Radio (m)"]
+      },
+      {
+        nombre: "Frases",
+        columnas: ["Tipo", "Frase"],
+        datos: [
+          // Puntual
+          ["Puntual", "¡Crack, llegaste a tiempo! 🚀"],
+          ["Puntual", "¡Así se hace, puntualito como reloj suizo! ⏱️"],
+          ["Puntual", "¡Buen inicio de jornada! 🌅"],
+          ["Puntual", "¡Eres puntual como el sol! ☀️"],
+          ["Puntual", "¡Excelente disciplina! 💼"],
+          ["Puntual", "¡A tiempo y con actitud! 💪"],
+          ["Puntual", "¡La puntualidad es tu superpoder! 🦸‍♂️"],
+          ["Puntual", "¡Ya estás dejando huella desde temprano! 👣"],
+          ["Puntual", "¡Hoy también ganaste al reloj! 🕒"],
+          ["Puntual", "¡Impecable llegada, sigue así! ✨"],
+
+          // Tarde
+          ["Tarde", "Uy... ¿te ganó la almohada? 😴"],
+          ["Tarde", "¡Llegaste, pero justito! 🕗"],
+          ["Tarde", "¡No pasa nada! Mañana será mejor. 🌤️"],
+          ["Tarde", "¡Vamos que sí se puede mejorar! 💥"],
+          ["Tarde", "¡Despierta campeón, que ya es hora! 🛌⏰"],
+          ["Tarde", "¡La próxima más temprano, tú puedes! 💡"],
+          ["Tarde", "¡No pierdas tu ritmo! 🎵"],
+          ["Tarde", "¡Llegaste tarde, pero llegaste! 😅"],
+          ["Tarde", "¡Mañana rompemos el récord! 🏁"],
+          ["Tarde", "¡Un nuevo intento cada día! 💫"],
+
+          // Salida
+          ["Salida", "¡Buen trabajo hoy! 🛠️"],
+          ["Salida", "Hora de descansar, lo hiciste bien ✨"],
+          ["Salida", "¡Día completado como un pro! ✔️"],
+          ["Salida", "¡Desconéctate y disfruta! 🎉"],
+          ["Salida", "¡Misión cumplida! 🕶️"],
+          ["Salida", "¡Gracias por tu esfuerzo! 🙌"],
+          ["Salida", "¡Otro día productivo en el bolsillo! 📈"],
+          ["Salida", "¡Ahora sí, a recargar energías! 🔋"],
+          ["Salida", "¡Gran jornada! Nos vemos mañana. 👋"],
+          ["Salida", "¡Hora de apagar motores! 🧠💤"]
+        ]
       }
     ];
 
@@ -65,11 +106,8 @@ function crearHojasYColumnas() {
         }
       }
 
-      // 👉 Aplicar formato especial si es la hoja de horarios
       if (config.nombre === "Horarios") {
-        // Formato hora para columnas B a E (2 a 5)
         hoja.getRange("B2:E").setNumberFormat("hh:mm");
-        // Formato número entero para columna F (6)
         hoja.getRange("F2:F").setNumberFormat("0");
       }
     });
@@ -78,4 +116,5 @@ function crearHojasYColumnas() {
     throw error;
   }
 }
+
 
