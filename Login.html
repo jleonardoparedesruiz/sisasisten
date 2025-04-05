@@ -975,14 +975,8 @@ function capturarFotoYRegistrar() {
 
       const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
 
-      // Paso 1: Validar horario
-      google.script.run.withSuccessHandler(function (respuesta) {
-        if (!respuesta.permitido) {
-          showFancyAlert(respuesta.mensaje);
-          stopCamera();
-          return;
-        }
-
+      // Función para continuar con la validación de geoballa y el registro
+      function proceedWithRegistro() {
         // Paso 2: Validar geoballa
         google.script.run.withSuccessHandler(function (geoResult) {
           if (!geoResult || !geoResult.dentro) {
@@ -1014,7 +1008,6 @@ function capturarFotoYRegistrar() {
 
               // Extraer frase si hay salto de línea
               const partes = mensaje.split("\n");
-              const descripcion = partes[0] || "";
               const frase = partes.slice(1).join("\n").trim();
 
               const mensajeFinal = `${icono} ${titulo}\n📍 Lugar: ${resFinal.lugar}\n\n${frase || "¡Buen trabajo!"}`;
@@ -1028,13 +1021,32 @@ function capturarFotoYRegistrar() {
           }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
 
         }).verificarGeoballa(ubicacionActual);
+      }
 
+      // Paso 1: Validar horario
+      google.script.run.withSuccessHandler(function (respuesta) {
+        if (respuesta.permitido === true) {
+          proceedWithRegistro();
+        } else if (respuesta.permitido === "confirm") {
+          showFancyConfirm(
+            respuesta.mensaje,
+            function () { // Si acepta
+              proceedWithRegistro();
+            },
+            function () { // Si cancela
+              stopCamera();
+            }
+          );
+        } else {
+          showFancyAlert(respuesta.mensaje);
+          stopCamera();
+          return;
+        }
       }).validarHorario(tipoEvento);
     };
     reader.readAsDataURL(blob);
   }, 'image/jpeg');
 }
-
 
     function stopCamera() {
       if (streamActivo) {
