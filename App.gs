@@ -133,7 +133,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     }
 
     const validacion = obtenerValidacionHorario(tipoEvento);
-    if (!validacion.permitido) return { mensaje: validacion.mensaje };
+    if (!validacion.permitido || validacion.permitido === false) return { mensaje: validacion.mensaje };
 
     const lugar = verificarGeoballa(ubicacion);
     if (!lugar || !lugar.dentro) {
@@ -146,37 +146,47 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     const datosUsuarios = hojaUsuarios.getDataRange().getValues();
     const timeZone = ss.getSpreadsheetTimeZone();
     const now = new Date();
-
     const fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
     const horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
 
     let nombre = "Desconocido";
+    let horasExtrasActivas = 0;
     const userTrimmed = usuario.trim();
     for (let i = 1; i < datosUsuarios.length; i++) {
       if (datosUsuarios[i][0].toString().trim() === userTrimmed) {
         nombre = datosUsuarios[i][1];
+        horasExtrasActivas = Number(datosUsuarios[i][7]) || 0;
         break;
       }
     }
 
+    // Si el usuario no tiene horas extras, se evita duplicar el registro del mismo tipo en el mismo día
     const registros = hojaRegistros.getDataRange().getValues();
-    for (let i = 1; i < registros.length; i++) {
-      const fila = registros[i];
-      const dniFila = fila[0].toString().trim();
-      const tipoFila = fila[4].toString().trim();
-      const fechaFila = fila[2] instanceof Date
-        ? Utilities.formatDate(fila[2], timeZone, "yyyy-MM-dd")
-        : fila[2];
-      if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
-        return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
+    if (horasExtrasActivas === 0) {
+      for (let i = 1; i < registros.length; i++) {
+        const fila = registros[i];
+        const dniFila = fila[0].toString().trim();
+        const tipoFila = fila[4].toString().trim();
+        let fechaFila = "";
+        const valorFecha = fila[2];
+        if (valorFecha instanceof Date && !isNaN(valorFecha)) {
+          fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
+        } else {
+          fechaFila = valorFecha.toString().trim();
+        }
+        if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
+          return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
+        }
       }
     }
 
+    // Subir la imagen
     const carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
     const blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
     const archivo = carpeta.createFile(blob);
     const linkImagen = archivo.getUrl();
 
+    // Registrar asistencia en BDregistros
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -189,7 +199,58 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       linkImagen
     ]);
 
-    // 🎯 Elegir tipo de frase: puntual / tarde / salida
+    // Si el usuario tiene horas extras activas y el evento es "Salida", registrar el intervalo en la hoja "HorasExtra"
+    if (horasExtrasActivas === 1 && tipoEvento === "Salida") {
+      // Buscar la última "Entrada" del día para este usuario en BDregistros
+      let ultimaEntrada = null;
+      for (let i = 1; i < registros.length; i++) {
+        const fila = registros[i];
+        if (fila[0].toString().trim() === userTrimmed && fila[4].toString().trim() === "Entrada") {
+          ultimaEntrada = fila;
+        }
+      }
+      // Si no se encuentra una "Entrada", se asume la hora actual (aunque idealmente siempre debe existir)
+      let horaEntrada = ultimaEntrada ? ultimaEntrada[3] : horaAhora;
+
+      // Calcular el intervalo de trabajo en horas
+      const entradaDate = new Date(fechaHoy + " " + horaEntrada);
+      const salidaDate = new Date(fechaHoy + " " + horaAhora);
+      const horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
+
+      // Obtener el horario programado de salida desde la hoja "Horarios"
+      const hojaHorarios = ss.getSheetByName("Horarios");
+      const horarios = hojaHorarios.getDataRange().getValues();
+      const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+      const diaSemana = dias[now.getDay()];
+      let horaSalidaProgramada = null;
+      for (let i = 1; i < horarios.length; i++) {
+        if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
+          horaSalidaProgramada = horarios[i][2];
+          break;
+        }
+      }
+      let horasExtra = 0;
+      if (horaSalidaProgramada) {
+        const salidaProgramadaDate = new Date(fechaHoy + " " + horaSalidaProgramada);
+        if (salidaDate > salidaProgramadaDate) {
+          horasExtra = (salidaDate - salidaProgramadaDate) / (1000 * 60 * 60);
+        }
+      }
+
+      const hojaHorasExtra = ss.getSheetByName("HorasExtra");
+      hojaHorasExtra.appendRow([
+        userTrimmed,
+        nombre,
+        fechaHoy,
+        horaEntrada,
+        horaAhora,
+        horasTrabajadas,
+        horasExtra,
+        ""
+      ]);
+    }
+
+    // Determinar y retornar mensaje motivacional según el tipo de registro
     let tipoFrase = "puntual";
     if (tipoEvento === "Salida") {
       tipoFrase = "salida";
@@ -213,7 +274,6 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         }
       }
     }
-
     const frase = obtenerFraseMotivacional(tipoFrase);
 
     return {
