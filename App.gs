@@ -619,11 +619,11 @@ function obtenerValidacionHorario(tipoEvento) {
   }
 
   if (tipoEvento === "Salida" && horaActual < horaEsperada) {
-    return {
-      permitido: false,
-      mensaje: `Aún no es hora de salida. Puedes marcar a partir de las ${horaPermitida}.`
-    };
-  }
+  return {
+    permitido: "confirm",
+    mensaje: `Aún no es hora de salida (normalmente a las ${horaPermitida}). ¿Deseas marcar la salida antes de lo establecido?`
+  };
+}
 
   return { permitido: true };
 }
@@ -657,27 +657,3 @@ function obtenerFraseMotivacional(tipoFrase) {
     return "¡Buen trabajo!";
   }
 }
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
