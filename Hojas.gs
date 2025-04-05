@@ -43,7 +43,10 @@ function crearHojasYColumnas() {
       },
       {
         nombre: "geoballa",
-        columnas: ["Lugar", "Ubicacion", "Radio (m)"]
+        columnas: ["Lugar", "Ubicacion", "Radio (m)"],
+        datos: [
+          ["CASA", "-8.06400242097821,-79.03615112056521", 1000]
+        ]
       },
       {
         nombre: "Frases",
@@ -85,6 +88,10 @@ function crearHojasYColumnas() {
           ["Salida", "¡Gran jornada! Nos vemos mañana. 👋"],
           ["Salida", "¡Hora de apagar motores! 🧠💤"]
         ]
+      },
+      {
+        nombre: "HorasExtra",
+        columnas: ["USUARIO", "Nombre", "Fecha", "Hora Entrada", "Hora Salida", "Horas Trabajadas", "Horas Extra", "Observaciones"]
       }
     ];
 
@@ -116,5 +123,4 @@ function crearHojasYColumnas() {
     throw error;
   }
 }
-
 
