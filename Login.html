@@ -521,15 +521,14 @@
       margin-right: 4px;
     }
     .geoballas-section .btn-icon.edit {
-  color: #007bff; /* Azul, puedes cambiarlo */
-}
-
-.geoballas-section .btn-icon.delete {
-  color: #e53935; /* Rojo, puedes cambiarlo */
-}
-.geoballas-section .btn-icon:hover {
-  opacity: 0.8; /* Efecto de oscurecer un poco al pasar el mouse */
-}
+      color: #007bff;
+    }
+    .geoballas-section .btn-icon.delete {
+      color: #e53935;
+    }
+    .geoballas-section .btn-icon:hover {
+      opacity: 0.8;
+    }
     /* Contenedor para el mapa interactivo */
     #map {
       width: 100%;
@@ -635,9 +634,16 @@
       </div>
     </div>
 
-    <button class="btn-orange" onclick="automatizarAsistencia()">
-      <i class="fa-solid fa-camera"></i> Activar Cámara
-    </button>
+    <!-- Botones para marcar Entrada y Salida -->
+    <div class="button-group">
+      <button class="btn-orange" onclick="iniciarCamara('Entrada')">
+        <i class="fa-solid fa-door-open"></i> Marcar Entrada
+      </button>
+      <button class="btn-orange" onclick="iniciarCamara('Salida')">
+        <i class="fa-solid fa-door-closed"></i> Marcar Salida
+      </button>
+    </div>
+    
     <video id="video" autoplay playsinline></video>
     <div class="mensaje" id="mensajeEvento"></div>
   </div>
@@ -895,19 +901,14 @@
       }).obtenerMarcacionesHoy();
     }
 
-    function automatizarAsistencia() {
-      google.script.run.withSuccessHandler(function(yaHayEntrada) {
-        activarCamara(yaHayEntrada);
-      }).verificarEntradaSinSalida();
-    }
-
+    /************** NUEVO FLUJO DE ASISTENCIA **************/
     let streamActivo = null;
     let ubicacionActual = "";
-    let esEntradaPendiente = false;
+    let tipoEventoPendiente = null;  // 'Entrada' o 'Salida'
 
-    function activarCamara(yaHayEntrada) {
-      esEntradaPendiente = !yaHayEntrada;
-      if (streamActivo) return;
+    function iniciarCamara(tipo) {
+      // Asigna el tipo de evento seleccionado
+      tipoEventoPendiente = tipo;
       const video = document.getElementById("video");
       video.style.display = "block";
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
@@ -928,7 +929,7 @@
         btn.setAttribute("id", "btnRegistrar");
         btn.classList.add("btn-orange");
         btn.innerHTML = '<i class="fa-solid fa-check"></i> REGISTRAR';
-        btn.onclick = () => {
+        btn.onclick = function() {
           btn.disabled = true;
           capturarFotoYRegistrar();
         };
@@ -939,10 +940,10 @@
     function obtenerUbicacion() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
-          position => {
-            ubicacionActual = `${position.coords.latitude}, ${position.coords.longitude}`;
+          function(position) {
+            ubicacionActual = position.coords.latitude + ", " + position.coords.longitude;
           },
-          error => {
+          function(error) {
             console.warn("Error GPS:", error.message);
             ubicacionActual = "No disponible";
           }
@@ -952,109 +953,81 @@
       }
     }
 
-function capturarFotoYRegistrar() {
-  const video = document.getElementById("video");
-  if (!video) return;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0);
-
-  canvas.toBlob(blob => {
-    const reader = new FileReader();
-    reader.onloadend = function () {
-      const base64Img = reader.result.split(',')[1];
-
-      if (!ubicacionActual || ubicacionActual === "No disponible" || ubicacionActual === "No soportado") {
-        showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
-        stopCamera();
-        return;
-      }
-
-      const tipoEvento = esEntradaPendiente ? "Entrada" : "Salida";
-
-      // Función para continuar con la validación de geoballa y el registro
-      function proceedWithRegistro() {
-        // Paso 2: Validar geoballa
-        google.script.run.withSuccessHandler(function (geoResult) {
-          if (!geoResult || !geoResult.dentro) {
-            const msg = geoResult
-              ? `Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`
-              : "No se encontró ninguna zona geográfica autorizada para marcar.";
-            showFancyAlert(msg);
+    function capturarFotoYRegistrar() {
+      const video = document.getElementById("video");
+      if (!video) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(function(blob) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const base64Img = reader.result.split(',')[1];
+          if (!ubicacionActual || ubicacionActual === "No disponible" || ubicacionActual === "No soportado") {
+            showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
             stopCamera();
             return;
           }
-
-          // Paso 3: Subir imagen y registrar asistencia
-          google.script.run.withSuccessHandler(function (resFinal) {
-            if (resFinal.lugar) {
-              let icono = "✅";
-              let titulo = "¡Registro exitoso!";
-              const mensaje = resFinal.mensaje || "";
-
-              if (mensaje.toLowerCase().includes("puntual")) {
-                icono = "⏰";
-                titulo = "Entrada puntual";
-              } else if (mensaje.toLowerCase().includes("tarde")) {
-                icono = "⚠️";
-                titulo = "Entrada tardía";
-              } else if (tipoEvento === "Salida") {
-                icono = "👋";
-                titulo = "Salida registrada";
-              }
-
-              // Extraer frase si hay salto de línea
-              const partes = mensaje.split("\n");
-              const frase = partes.slice(1).join("\n").trim();
-
-              const mensajeFinal = `${icono} ${titulo}\n📍 Lugar: ${resFinal.lugar}\n\n${frase || "¡Buen trabajo!"}`;
-              showFancyAlert(mensajeFinal);
-            } else {
-              showFancyAlert(resFinal.mensaje);
-            }
-
+          const tipoEvento = tipoEventoPendiente;
+          if (!tipoEvento) {
+            showFancyAlert("No se definió el tipo de evento (Entrada/Salida).");
             stopCamera();
-            cargarMarcacionesHoy();
-          }).subirYRegistrarAsistencia(base64Img, ubicacionActual, tipoEvento);
-
-        }).verificarGeoballa(ubicacionActual);
-      }
-
-      // Paso 1: Validar horario
-      google.script.run.withSuccessHandler(function (respuesta) {
-        if (respuesta.permitido === true) {
-          proceedWithRegistro();
-        } else if (respuesta.permitido === "confirm") {
-          showFancyConfirm(
-            respuesta.mensaje,
-            function () { // Si acepta
-              proceedWithRegistro();
-            },
-            function () { // Si cancela
+            return;
+          }
+          // Validar horario
+          google.script.run.withSuccessHandler(function(respuesta) {
+            if (respuesta.permitido === true) {
+              verificarGeoballaYRegistrar(base64Img, ubicacionActual, tipoEvento);
+            } else if (respuesta.permitido === "confirm") {
+              showFancyConfirm(
+                respuesta.mensaje,
+                function() {
+                  verificarGeoballaYRegistrar(base64Img, ubicacionActual, tipoEvento);
+                },
+                function() {
+                  stopCamera();
+                }
+              );
+            } else {
+              showFancyAlert(respuesta.mensaje);
               stopCamera();
             }
-          );
-        } else {
-          showFancyAlert(respuesta.mensaje);
+          }).validarHorario(tipoEvento);
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg');
+    }
+
+    function verificarGeoballaYRegistrar(base64Img, ubicacion, tipoEvento) {
+      google.script.run.withSuccessHandler(function(geoResult) {
+        if (!geoResult || !geoResult.dentro) {
+          const msg = geoResult
+            ? `Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`
+            : "No se encontró ninguna zona geográfica autorizada para marcar.";
+          showFancyAlert(msg);
           stopCamera();
           return;
         }
-      }).validarHorario(tipoEvento);
-    };
-    reader.readAsDataURL(blob);
-  }, 'image/jpeg');
-}
+        // Subir imagen y registrar asistencia
+        google.script.run.withSuccessHandler(function(resFinal) {
+          showFancyAlert(resFinal.mensaje);
+          stopCamera();
+          cargarMarcacionesHoy();
+        }).subirYRegistrarAsistencia(base64Img, ubicacion, tipoEvento);
+      }).verificarGeoballa(ubicacion);
+    }
 
     function stopCamera() {
       if (streamActivo) {
-        streamActivo.getTracks().forEach(track => track.stop());
+        streamActivo.getTracks().forEach(function(track) {
+          track.stop();
+        });
         streamActivo = null;
       }
       const video = document.getElementById("video");
-      video.style.display = "none";
+      if (video) video.style.display = "none";
       const btnRegistrar = document.getElementById("btnRegistrar");
       if (btnRegistrar) btnRegistrar.remove();
     }
@@ -1080,105 +1053,79 @@ function capturarFotoYRegistrar() {
       google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
     }
 
-    // Función para mostrar la sección de Geoballas
-  function mostrarGeoballas() {
-  document.getElementById("adminPanel").style.display = "block";
-  document.getElementById("usersSection").style.display = "none";
-  document.getElementById("geoballasSection").style.display = "block";
-  google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
-  
-  // Reinicializar el mapa para geoballas y forzar resize
-  if (typeof initMap === "function") {
-    initMap();
-  }
-  // Espera un poco para que el contenedor se muestre y luego dispara el resize
-  setTimeout(function() {
-    google.maps.event.trigger(map, "resize");
-    // Opcional: recéntralo en la posición actual o en una predeterminada
-    map.setCenter({ lat: -8.109, lng: -79.021 }); // O la posición deseada
-  }, 100);
-}
-
+    function mostrarGeoballas() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "block";
+      google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
+      if (typeof initMap === "function") {
+        initMap();
+      }
+      setTimeout(function() {
+        google.maps.event.trigger(map, "resize");
+        map.setCenter({ lat: -8.109, lng: -79.021 });
+      }, 100);
+    }
 
     function renderizarUsuarios(lista) {
       const tbody = document.getElementById("tbodyUsuarios");
       tbody.innerHTML = "";
       lista.forEach(usuario => {
         const tr = document.createElement("tr");
-
-        // Columna de Acciones (íconos)
         const tdAcciones = document.createElement("td");
-
         const btnEdit = document.createElement("button");
         btnEdit.classList.add("btn-icon", "edit");
         btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
         btnEdit.onclick = () => confirmarEdicionUsuario(usuario);
-
         const btnDelete = document.createElement("button");
         btnDelete.classList.add("btn-icon", "delete");
         btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
         btnDelete.onclick = () => eliminarUsuario(usuario.dni);
-
         tdAcciones.appendChild(btnEdit);
         tdAcciones.appendChild(btnDelete);
         tr.appendChild(tdAcciones);
-
-        // Resto de columnas
         const tdNombre = document.createElement("td");
         tdNombre.textContent = usuario.nombre || "";
         tr.appendChild(tdNombre);
-
         const tdDni = document.createElement("td");
         tdDni.textContent = usuario.dni || "";
         tr.appendChild(tdDni);
-
         const tdContra = document.createElement("td");
         tdContra.textContent = usuario.contrasena || "";
         tr.appendChild(tdContra);
-
         const tdArea = document.createElement("td");
         tdArea.textContent = usuario.area || "";
         tr.appendChild(tdArea);
-
         const tdCargo = document.createElement("td");
         tdCargo.textContent = usuario.cargo || "";
         tr.appendChild(tdCargo);
-
         const tdEmail = document.createElement("td");
         tdEmail.textContent = usuario.email || "";
         tr.appendChild(tdEmail);
-
         const tdNivel = document.createElement("td");
         tdNivel.textContent = usuario.nivel || 0;
         tr.appendChild(tdNivel);
-
         const tdHoras = document.createElement("td");
         tdHoras.textContent = usuario.horasExtras || 0;
         tr.appendChild(tdHoras);
-
         tbody.appendChild(tr);
       });
     }
 
-    // Función para renderizar la lista de geoballas
     function renderizarGeoballas(geoballas) {
       const tbody = document.getElementById("tbodyGeoballas");
       tbody.innerHTML = "";
       geoballas.forEach(geo => {
         const tr = document.createElement("tr");
-        
         const tdLugar = document.createElement("td");
         tdLugar.textContent = geo.lugar || "";
         tr.appendChild(tdLugar);
-        
         const tdUbicacion = document.createElement("td");
         tdUbicacion.textContent = geo.ubicacion || "";
         tr.appendChild(tdUbicacion);
-        
         const tdRadio = document.createElement("td");
         tdRadio.textContent = geo.radio || "";
         tr.appendChild(tdRadio);
-        
         const tdAcciones = document.createElement("td");
         const btnEdit = document.createElement("button");
         btnEdit.classList.add("btn-icon", "edit");
@@ -1191,12 +1138,10 @@ function capturarFotoYRegistrar() {
         tdAcciones.appendChild(btnEdit);
         tdAcciones.appendChild(btnDelete);
         tr.appendChild(tdAcciones);
-        
         tbody.appendChild(tr);
       });
     }
 
-    // Funciones para confirmar, editar y eliminar usuarios y geoballas
     function confirmarEdicionUsuario(usuario) {
       showFancyConfirm(
         `¿Está seguro de que desea editar al usuario con DNI: ${usuario.dni}?`,
@@ -1208,19 +1153,18 @@ function capturarFotoYRegistrar() {
         }
       );
     }
+
     function confirmarEdicionGeoballa(geo) {
-  showFancyConfirm(
-    `¿Está seguro de que desea editar la geoballa para el lugar: ${geo.lugar}?`,
-    () => {
-      // Si el usuario confirma
-      editarGeoballa(geo);
-    },
-    () => {
-      // Si el usuario cancela
-      console.log("Edición de geoballa cancelada");
+      showFancyConfirm(
+        `¿Está seguro de que desea editar la geoballa para el lugar: ${geo.lugar}?`,
+        () => {
+          editarGeoballa(geo);
+        },
+        () => {
+          console.log("Edición de geoballa cancelada");
+        }
+      );
     }
-  );
-}
 
     function editarUsuario(usuario) {
       document.getElementById("usuarioDni").value = usuario.dni;
@@ -1252,40 +1196,31 @@ function capturarFotoYRegistrar() {
       );
     }
 
-    // Funciones para geoballas
-function editarGeoballa(geo) {
-  document.getElementById("geoballaLugar").value = geo.lugar;
-  document.getElementById("geoballaUbicacion").value = geo.ubicacion;
-  document.getElementById("geoballaRadio").value = geo.radio;
-  
-  if (map) {
-    var parts = geo.ubicacion.split(",");
-    var lat = parseFloat(parts[0].trim());
-    var lng = parseFloat(parts[1].trim());
-    var newPos = { lat, lng };
-
-    // Si no existe el marcador, se crea con el logo; de lo contrario, se actualiza
-    if (!marker) {
-      marker = new google.maps.Marker({
-        position: newPos,
-        map: map,
-        icon: {
-          url: "https://i.imgur.com/tud5XMS.png",
-          scaledSize: new google.maps.Size(32, 32)
+    function editarGeoballa(geo) {
+      document.getElementById("geoballaLugar").value = geo.lugar;
+      document.getElementById("geoballaUbicacion").value = geo.ubicacion;
+      document.getElementById("geoballaRadio").value = geo.radio;
+      if (map) {
+        var parts = geo.ubicacion.split(",");
+        var lat = parseFloat(parts[0].trim());
+        var lng = parseFloat(parts[1].trim());
+        var newPos = { lat, lng };
+        if (!marker) {
+          marker = new google.maps.Marker({
+            position: newPos,
+            map: map,
+            icon: {
+              url: "https://i.imgur.com/tud5XMS.png",
+              scaledSize: new google.maps.Size(32, 32)
+            }
+          });
+        } else {
+          marker.setPosition(newPos);
         }
-      });
-    } else {
-      marker.setPosition(newPos);
+        updateCircle(newPos);
+        map.setCenter(newPos);
+      }
     }
-
-    // Actualizar o crear el círculo en la posición y con el radio especificado
-    updateCircle(newPos);
-
-    // Centrar el mapa en la nueva posición
-    map.setCenter(newPos);
-  }
-}
-
 
     function eliminarGeoballa(lugar) {
       showFancyConfirm(
@@ -1337,7 +1272,6 @@ function editarGeoballa(geo) {
       const contrasena = document.getElementById("contrasenaUsuario").value.trim();
       const nivel = document.getElementById("nivel").value.trim();
       const horasExtras = document.getElementById("horasExtras").value.trim();
-
       if (!/^\d{8}$/.test(dni)) {
         showFancyAlert("El DNI debe ser un número de 8 dígitos.");
         return;
@@ -1346,7 +1280,6 @@ function editarGeoballa(geo) {
         showFancyAlert("La contraseña debe tener exactamente 8 dígitos numéricos.");
         return;
       }
-
       const userObj = {
         dni,
         nombre,
@@ -1357,7 +1290,6 @@ function editarGeoballa(geo) {
         nivel: parseInt(nivel, 10),
         horasExtras: parseInt(horasExtras, 10)
       };
-
       const guardarBtn = document.getElementById("guardarBtn");
       guardarBtn.disabled = true;
       google.script.run
@@ -1467,84 +1399,64 @@ function editarGeoballa(geo) {
     var marker; // Variable global para el marcador
     var circle; // Variable global para el círculo
 
-function updateCircle(center) {
-  // Obtener el valor del radio desde el campo de entrada (puedes definir un valor por defecto si no se ingresa nada)
-  var radioInput = document.getElementById("geoballaRadio").value;
-  var radio = parseFloat(radioInput);
-  if (isNaN(radio)) radio = 50; // Valor predeterminado en metros
-
-  // Si el círculo aún no existe, se crea; de lo contrario, se actualiza su centro y radio
-  if (!circle) {
-    circle = new google.maps.Circle({
-      map: map,
-      center: center,
-      radius: radio,
-      fillColor: "#FF0000",     // Color de relleno
-      fillOpacity: 0.2,         // Opacidad del relleno
-      strokeColor: "#FF0000",   // Color del borde
-      strokeOpacity: 0.8,       // Opacidad del borde
-      strokeWeight: 2           // Grosor del borde
-    });
-  } else {
-    circle.setCenter(center);
-    circle.setRadius(radio);
-  }
-}
-
-
-function initMap() {
-  const defaultLatLng = { lat: -8.109, lng: -79.021 }; // Ejemplo: Trujillo, Perú
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: defaultLatLng,
-    zoom: 15,
-  });
-
-  // Si deseas crear un marcador inicial, también lo haces con el icono personalizado:
-  marker = new google.maps.Marker({
-    position: defaultLatLng,
-    map: map,
-    icon: {
-      url: "https://i.imgur.com/tud5XMS.png",
-      scaledSize: new google.maps.Size(32, 32)
+    function updateCircle(center) {
+      var radioInput = document.getElementById("geoballaRadio").value;
+      var radio = parseFloat(radioInput);
+      if (isNaN(radio)) radio = 50;
+      if (!circle) {
+        circle = new google.maps.Circle({
+          map: map,
+          center: center,
+          radius: radio,
+          fillColor: "#FF0000",
+          fillOpacity: 0.2,
+          strokeColor: "#FF0000",
+          strokeOpacity: 0.8,
+          strokeWeight: 2
+        });
+      } else {
+        circle.setCenter(center);
+        circle.setRadius(radio);
+      }
     }
-  });
 
-  // Inicializar el círculo con la posición por defecto
-  updateCircle(defaultLatLng);
-
-  // Escuchar clics en el mapa para actualizar el marcador y el círculo
-  map.addListener("click", (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    const newPos = { lat, lng };
-
-    // Actualizar o crear el marcador
-    if (!marker) {
+    function initMap() {
+      const defaultLatLng = { lat: -8.109, lng: -79.021 };
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: defaultLatLng,
+        zoom: 15,
+      });
       marker = new google.maps.Marker({
-        position: newPos,
+        position: defaultLatLng,
         map: map,
         icon: {
           url: "https://i.imgur.com/tud5XMS.png",
           scaledSize: new google.maps.Size(32, 32)
         }
       });
-    } else {
-      marker.setPosition(newPos);
+      updateCircle(defaultLatLng);
+      map.addListener("click", (e) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        const newPos = { lat, lng };
+        if (!marker) {
+          marker = new google.maps.Marker({
+            position: newPos,
+            map: map,
+            icon: {
+              url: "https://i.imgur.com/tud5XMS.png",
+              scaledSize: new google.maps.Size(32, 32)
+            }
+          });
+        } else {
+          marker.setPosition(newPos);
+        }
+        updateCircle(newPos);
+        document.getElementById("geoballaUbicacion").value = lat + "," + lng;
+      });
     }
-
-    // Actualizar el círculo con la nueva posición
-    updateCircle(newPos);
-
-    // Actualizar el campo de ubicación en el formulario
-    document.getElementById("geoballaUbicacion").value = lat + "," + lng;
-  });
-}
-
-
   </script>
   <!-- Incluir el script de Google Maps con tu API key -->
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap">
-  </script>
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap"></script>
 </body>
 </html>
