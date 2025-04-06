@@ -93,20 +93,19 @@ function obtenerMarcacionesHoy() {
     var userTrimmed = usuario.trim();
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
-      var fechaFila = "";
+      
+      // Formatear fecha
       var valorFecha = datos[i][2];
-      if (valorFecha instanceof Date && !isNaN(valorFecha)) {
-        fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
-      } else {
-        fechaFila = valorFecha.toString().trim();
-      }
-      var horaFila = "";
+      var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
+      
+      // Formatear hora
       var valorHora = datos[i][3];
-      if (valorHora instanceof Date && !isNaN(valorHora)) {
-        horaFila = Utilities.formatDate(valorHora, timeZone, "HH:mm:ss");
-      } else {
-        horaFila = valorHora.toString().trim();
-      }
+      var horaFila = (valorHora instanceof Date && !isNaN(valorHora))
+          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+          : valorHora.toString().trim();
+      
       var tipo = datos[i][4].toString().trim();
       if (dniFila === userTrimmed && fechaFila === fechaHoy) {
         resultados.push({ tipo: tipo, fecha: fechaFila, hora: horaFila });
@@ -120,8 +119,68 @@ function obtenerMarcacionesHoy() {
 }
 
 /**
+ * obtenerRegistrosUsuario: Retorna un arreglo de objetos con todos los registros
+ * del usuario logueado. Cada registro se devuelve de forma independiente,
+ * incluyendo fecha, hora, tipo (Entrada/Salida), nombre, lugar y foto.
+ * Si se proporcionan fechaInicio y fechaFin (formato "yyyy-MM-dd"), se filtra en ese rango.
+ */
+function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
+  try {
+    var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    if (!usuario) return [];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var datos = hoja.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var userTrimmed = usuario.trim();
+    var resultado = [];
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+      if (fila[0].toString().trim() !== userTrimmed) continue;
+      
+      var valorFecha = fila[2];
+      var fechaStr = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
+      
+      if (fechaInicio && fechaFin) {
+        if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
+      }
+      
+      var valorHora = fila[3];
+      var horaStr = (valorHora instanceof Date && !isNaN(valorHora))
+          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+          : valorHora.toString().trim();
+      
+      var tipo = fila[4].toString().trim();
+      var nombre = fila[1] ? fila[1].toString() : "";
+      var lugar = fila[7] ? fila[7].toString() : "";
+      var foto = fila[8] ? fila[8].toString() : "";
+      
+      resultado.push({
+        fecha: fechaStr,
+        hora: horaStr,
+        tipo: tipo,
+        nombre: nombre,
+        lugar: lugar,
+        foto: foto
+      });
+    }
+    resultado.sort(function(a, b) {
+      var compFecha = a.fecha.localeCompare(b.fecha);
+      if (compFecha !== 0) return compFecha;
+      return a.hora.localeCompare(b.hora);
+    });
+    return resultado;
+  } catch (error) {
+    Logger.log("Error en obtenerRegistrosUsuario: " + error);
+    return [];
+  }
+}
+
+/**
  * subirYRegistrarAsistencia: Sube la imagen, verifica la geolocalización (geoballa) y registra la asistencia.
- * Evita registros duplicados para el mismo tipo en el mismo día.
+ * Evita registros duplicados para el mismo tipo en el mismo día (para usuarios sin horas extras).
  */
 function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
   try {
@@ -140,14 +199,14 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       return { mensaje: `Estás a ${Math.round(lugar.distancia)} metros de "${lugar.lugar}".\nRadio permitido: ${lugar.radio} m.\nNo puedes marcar asistencia.` };
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const hojaUsuarios = ss.getSheetByName("Usuarios");
-    const hojaRegistros = ss.getSheetByName("BDregistros");
-    const datosUsuarios = hojaUsuarios.getDataRange().getValues();
-    const timeZone = ss.getSpreadsheetTimeZone();
-    const now = new Date();
-    const fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
-    const horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaUsuarios = ss.getSheetByName("Usuarios");
+    var hojaRegistros = ss.getSheetByName("BDregistros");
+    var datosUsuarios = hojaUsuarios.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var now = new Date();
+    var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
+    var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
 
     let nombre = "Desconocido";
     let horasExtrasActivas = 0;
@@ -160,33 +219,31 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       }
     }
 
-    // Si el usuario no tiene horas extras, se evita duplicar el registro del mismo tipo en el mismo día
-    const registros = hojaRegistros.getDataRange().getValues();
+    // Evitar duplicar registros si el usuario no tiene horas extras
+    var registros = hojaRegistros.getDataRange().getValues();
     if (horasExtrasActivas === 0) {
       for (let i = 1; i < registros.length; i++) {
-        const fila = registros[i];
-        const dniFila = fila[0].toString().trim();
-        const tipoFila = fila[4].toString().trim();
-        let fechaFila = "";
-        const valorFecha = fila[2];
-        if (valorFecha instanceof Date && !isNaN(valorFecha)) {
-          fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
-        } else {
-          fechaFila = valorFecha.toString().trim();
-        }
+        let fila = registros[i];
+        let dniFila = fila[0].toString().trim();
+        let tipoFila = fila[4].toString().trim();
+        let valorFecha = fila[2];
+        let fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
+            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+            : valorFecha.toString().trim();
         if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
           return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
         }
       }
     }
 
-    // Subir la imagen
-    const carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
-    const blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
-    const archivo = carpeta.createFile(blob);
-    const linkImagen = archivo.getUrl();
+    // Subir la imagen y hacerla pública
+    var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
+    var blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
+    var archivo = carpeta.createFile(blob);
+    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var linkImagen = archivo.getUrl();
 
-    // Registrar asistencia en BDregistros
+    // Registrar asistencia
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -199,29 +256,23 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       linkImagen
     ]);
 
-    // Si el usuario tiene horas extras activas y el evento es "Salida", registrar el intervalo en la hoja "HorasExtra"
+    // Registrar horas extra si aplica
     if (horasExtrasActivas === 1 && tipoEvento === "Salida") {
-      // Buscar la última "Entrada" del día para este usuario en BDregistros
       let ultimaEntrada = null;
       for (let i = 1; i < registros.length; i++) {
-        const fila = registros[i];
+        let fila = registros[i];
         if (fila[0].toString().trim() === userTrimmed && fila[4].toString().trim() === "Entrada") {
           ultimaEntrada = fila;
         }
       }
-      // Si no se encuentra una "Entrada", se asume la hora actual (aunque idealmente siempre debe existir)
       let horaEntrada = ultimaEntrada ? ultimaEntrada[3] : horaAhora;
-
-      // Calcular el intervalo de trabajo en horas
-      const entradaDate = new Date(fechaHoy + " " + horaEntrada);
-      const salidaDate = new Date(fechaHoy + " " + horaAhora);
-      const horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
-
-      // Obtener el horario programado de salida desde la hoja "Horarios"
-      const hojaHorarios = ss.getSheetByName("Horarios");
-      const horarios = hojaHorarios.getDataRange().getValues();
-      const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
-      const diaSemana = dias[now.getDay()];
+      let entradaDate = new Date(fechaHoy + " " + horaEntrada);
+      let salidaDate = new Date(fechaHoy + " " + horaAhora);
+      let horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
+      let hojaHorarios = ss.getSheetByName("Horarios");
+      let horarios = hojaHorarios.getDataRange().getValues();
+      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Viernes", "Sabado", "Domingo"];
+      let diaSemana = dias[now.getDay()];
       let horaSalidaProgramada = null;
       for (let i = 1; i < horarios.length; i++) {
         if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
@@ -231,13 +282,12 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       }
       let horasExtra = 0;
       if (horaSalidaProgramada) {
-        const salidaProgramadaDate = new Date(fechaHoy + " " + horaSalidaProgramada);
+        let salidaProgramadaDate = new Date(fechaHoy + " " + horaSalidaProgramada);
         if (salidaDate > salidaProgramadaDate) {
           horasExtra = (salidaDate - salidaProgramadaDate) / (1000 * 60 * 60);
         }
       }
-
-      const hojaHorasExtra = ss.getSheetByName("HorasExtra");
+      let hojaHorasExtra = ss.getSheetByName("HorasExtra");
       hojaHorasExtra.appendRow([
         userTrimmed,
         nombre,
@@ -250,23 +300,23 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       ]);
     }
 
-    // Determinar y retornar mensaje motivacional según el tipo de registro
+    // Determinar mensaje motivacional
     let tipoFrase = "puntual";
     if (tipoEvento === "Salida") {
       tipoFrase = "salida";
     } else if (tipoEvento === "Entrada") {
-      const hojaHorarios = ss.getSheetByName("Horarios");
-      const horarios = hojaHorarios.getDataRange().getValues();
-      const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-      const diaSemana = dias[now.getDay()];
+      let hojaHorarios = ss.getSheetByName("Horarios");
+      let horarios = hojaHorarios.getDataRange().getValues();
+      let dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+      let diaSemana = dias[now.getDay()];
       for (let i = 1; i < horarios.length; i++) {
         if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
-          const horaIngreso = horarios[i][1];
-          const toleranciaMin = parseInt(horarios[i][5]) || 0;
-          const horaEsperada = new Date(now);
-          const [h, m] = horaIngreso.toString().split(":");
+          let horaIngreso = horarios[i][1];
+          let toleranciaMin = parseInt(horarios[i][5]) || 0;
+          let horaEsperada = new Date(now);
+          let [h, m] = horaIngreso.toString().split(":");
           horaEsperada.setHours(parseInt(h), parseInt(m), 0, 0);
-          const limite = new Date(horaEsperada.getTime() + toleranciaMin * 60000);
+          let limite = new Date(horaEsperada.getTime() + toleranciaMin * 60000);
           if (now > limite) {
             tipoFrase = "tarde";
           }
@@ -274,8 +324,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         }
       }
     }
-    const frase = obtenerFraseMotivacional(tipoFrase);
-
+    let frase = obtenerFraseMotivacional(tipoFrase);
     return {
       mensaje: `✅ Se registró su ${tipoEvento.toLowerCase()} en: ${lugar.lugar}.\n${frase}`,
       evento: tipoEvento,
@@ -283,7 +332,6 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       hora: horaAhora,
       lugar: lugar.lugar
     };
-
   } catch (error) {
     Logger.log("Error en subirYRegistrarAsistencia: " + error);
     return { mensaje: "Error al registrar asistencia: " + error };
@@ -400,7 +448,12 @@ function obtenerEstadisticas() {
       var dni = datos[i][0].toString().trim();
       registrosPorUsuario[dni] = (registrosPorUsuario[dni] || 0) + 1;
     }
-    return { totalRegistros: totalRegistros, totalEntradas: totalEntradas, totalSalidas: totalSalidas, registrosPorUsuario: registrosPorUsuario };
+    return {
+      totalRegistros: totalRegistros,
+      totalEntradas: totalEntradas,
+      totalSalidas: totalSalidas,
+      registrosPorUsuario: registrosPorUsuario
+    };
   } catch (error) {
     Logger.log("Error en obtenerEstadisticas: " + error);
     return { totalRegistros: 0, totalEntradas: 0, totalSalidas: 0, registrosPorUsuario: {} };
@@ -432,13 +485,10 @@ function verificarEntradaSinSalida() {
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       if (dniFila !== usuario.trim()) continue;
-      var fechaFila = "";
       var valorFecha = datos[i][2];
-      if (valorFecha instanceof Date && !isNaN(valorFecha)) {
-        fechaFila = Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd");
-      } else {
-        fechaFila = valorFecha.toString().trim();
-      }
+      var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
       if (fechaFila !== fechaHoy) continue;
       var tipoFila = datos[i][4].toString().trim();
       if (tipoFila === "Entrada") {
@@ -455,10 +505,6 @@ function verificarEntradaSinSalida() {
 }
 
 /************** FUNCIONES DE GEOBALLAS **************/
-/**
- * Verifica si la ubicación está dentro de una geoballa válida
- * Devuelve un objeto con: { dentro: true/false, lugar: "nombre", distancia: X, radio: Y }
- */
 function verificarGeoballa(ubicacion) {
   try {
     var parts = ubicacion.split(",");
@@ -466,32 +512,23 @@ function verificarGeoballa(ubicacion) {
     var latUser = parseFloat(parts[0].trim());
     var lngUser = parseFloat(parts[1].trim());
     if (isNaN(latUser) || isNaN(lngUser)) return null;
-
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
     var data = geoSheet.getDataRange().getValues();
-
     var geoballaMasCercana = null;
     var distanciaMinima = Infinity;
-
     for (var i = 1; i < data.length; i++) {
       var lugar = data[i][0];
       var ubicacionGeo = data[i][1];
       var radio = parseFloat(data[i][2]);
-
       if (!ubicacionGeo || isNaN(radio)) continue;
-
       var geoParts = ubicacionGeo.split(",");
       var latGeo = parseFloat(geoParts[0].trim());
       var lngGeo = parseFloat(geoParts[1].trim());
-
       if (isNaN(latGeo) || isNaN(lngGeo)) continue;
-
       var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
-
       Logger.log(`🛰️ Revisando ${lugar} - Distancia: ${distancia} m | Radio: ${radio} m`);
-
       if (distancia <= radio) {
         return {
           lugar: lugar,
@@ -500,8 +537,6 @@ function verificarGeoballa(ubicacion) {
           radio: radio
         };
       }
-
-      // Guardamos la más cercana (aunque esté fuera del radio)
       if (distancia < distanciaMinima) {
         distanciaMinima = distancia;
         geoballaMasCercana = {
@@ -512,8 +547,7 @@ function verificarGeoballa(ubicacion) {
         };
       }
     }
-
-    return geoballaMasCercana; // Si no estuvo dentro, igual devolvemos info
+    return geoballaMasCercana;
   } catch (error) {
     Logger.log("⚠️ Error en verificarGeoballa: " + error);
     return null;
@@ -609,9 +643,7 @@ function validarHorario(tipoEvento) {
   try {
     const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
     if (!usuario) return { permitido: false, mensaje: "Usuario no autenticado." };
-
     return obtenerValidacionHorario(tipoEvento);
-
   } catch (e) {
     Logger.log("Error en validarHorario: " + e);
     return { permitido: false, mensaje: "Error al validar horario: " + e };
@@ -624,13 +656,10 @@ function obtenerValidacionHorario(tipoEvento) {
   const horarios = hojaHorarios.getDataRange().getValues();
   const timeZone = ss.getSpreadsheetTimeZone();
   const now = new Date();
-
-  const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
+  const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
   const diaSemana = dias[now.getDay()];
-  
   let horaPermitida = null;
   let toleranciaMin = 0;
-
   for (let i = 1; i < horarios.length; i++) {
     if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
       if (tipoEvento === "Entrada") {
@@ -642,25 +671,19 @@ function obtenerValidacionHorario(tipoEvento) {
       break;
     }
   }
-
   if (!horaPermitida) {
     return { permitido: false, mensaje: `No hay horario configurado para ${diaSemana}.` };
   }
-
-  // ✅ Normalizar hora si es Date
   if (horaPermitida instanceof Date) {
     horaPermitida = Utilities.formatDate(horaPermitida, timeZone, "HH:mm");
   }
-
   const horaActual = now.getHours() + now.getMinutes() / 60;
   const [h, m] = horaPermitida.toString().split(":");
   const horaEsperada = parseInt(h) + (parseInt(m) || 0) / 60;
   const horaLimite = horaEsperada + (toleranciaMin / 60);
-
   if (tipoEvento === "Entrada") {
-    const margenAnticipado = 15 / 60; // 15 minutos antes
+    const margenAnticipado = 15 / 60;
     const horaMinima = horaEsperada - margenAnticipado;
-
     if (horaActual < horaMinima) {
       const minutosFaltantes = Math.round((horaMinima - horaActual) * 60);
       return {
@@ -668,7 +691,6 @@ function obtenerValidacionHorario(tipoEvento) {
         mensaje: `Aún no puedes marcar. Espera ${minutosFaltantes} minuto(s) más (desde las ${Utilities.formatDate(new Date(now.getTime() + minutosFaltantes * 60000), timeZone, "HH:mm")}).`
       };
     }
-
     if (horaActual > horaLimite) {
       const minutosTarde = Math.round((horaActual - horaEsperada) * 60);
       return {
@@ -677,41 +699,32 @@ function obtenerValidacionHorario(tipoEvento) {
       };
     }
   }
-
   if (tipoEvento === "Salida" && horaActual < horaEsperada) {
-  return {
-    permitido: "confirm",
-    mensaje: `Aún no es hora de salida (normalmente a las ${horaPermitida}). ¿Deseas marcar la salida antes de lo establecido?`
-  };
-}
-
+    return {
+      permitido: "confirm",
+      mensaje: `Aún no es hora de salida (normalmente a las ${horaPermitida}). ¿Deseas marcar la salida antes de lo establecido?`
+    };
+  }
   return { permitido: true };
 }
-
 
 function obtenerFraseMotivacional(tipoFrase) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const hoja = ss.getSheetByName("Frases");
     if (!hoja) return "¡Buen trabajo!";
-
     const datos = hoja.getDataRange().getValues();
     const encabezado = datos[0];
     const idxFrase = encabezado.indexOf("Frase");
     const idxTipo = encabezado.indexOf("Tipo");
-
     if (idxFrase === -1 || idxTipo === -1) return "¡Buen trabajo!";
-
     const frasesFiltradas = datos.slice(1).filter(fila =>
       fila[idxFrase] && fila[idxTipo] &&
       fila[idxTipo].toString().toLowerCase() === tipoFrase.toLowerCase()
     ).map(fila => fila[idxFrase]);
-
     if (frasesFiltradas.length === 0) return "¡Buen trabajo!";
-    
     const index = Math.floor(Math.random() * frasesFiltradas.length);
     return frasesFiltradas[index];
-
   } catch (e) {
     Logger.log("Error en obtenerFraseMotivacional: " + e);
     return "¡Buen trabajo!";
