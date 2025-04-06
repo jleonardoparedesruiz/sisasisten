@@ -13,14 +13,17 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      /* Usar 100vh para asegurar que ocupe la pantalla completa */
+      min-height: 100vh;
       background: linear-gradient(to right, #ece9e6, #ffffff);
     }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex; 
+      flex-direction: column;
       justify-content: center; 
-      align-items: center; 
+      align-items: center;
+      text-align: center;
     }
     .container {
       max-width: 1100px;
@@ -43,19 +46,20 @@
     }
     
     /* ==============================
-       3. Contenedores: Login, Marcación, Panel Admin
+       3. Contenedores: Login, Marcación, Panel Admin, Registro Personal
        ============================== */
-    .login-box, .marcacion-box, .admin-panel {
+    .login-box, .marcacion-box, .admin-panel, .registro-personal {
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 8px 16px rgba(229,57,53,0.3);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
       margin: 40px auto;
+      text-align: center;
     }
-    .admin-panel {
+    .login-box, .marcacion-box {
+      max-width: 400px;
+    }
+    .admin-panel, .registro-personal {
       max-width: 1100px;
     }
     .logo {
@@ -79,7 +83,8 @@
     }
     input[type="text"],
     input[type="password"],
-    input[type="number"] {
+    input[type="number"],
+    input[type="date"] {
       width: 100%;
       padding: 10px 35px;
       border: 2px solid #ddd;
@@ -231,25 +236,6 @@
     .admin-navbar .menu-admin a:hover {
       opacity: 0.8;
     }
-    .admin-panel {
-      display: none;
-      background: #ffffff;
-      margin: 60px auto 20px auto;
-      border-radius: 8px;
-      box-shadow: 0 8px 16px rgba(229,57,53,0.3);
-      width: 90%;
-      max-width: 1100px;
-      overflow: hidden;
-    }
-    .admin-panel .container-admin {
-      padding: 20px;
-    }
-    .admin-panel h3 {
-      margin: 0;
-      font-size: 20px;
-      color: #333;
-      margin-bottom: 10px;
-    }
     
     /* ==============================
        7. Sección Usuarios en Admin
@@ -334,7 +320,6 @@
       border-bottom: 1px solid #eee;
       vertical-align: middle;
     }
-    /* Columna Acciones */
     .tabla-usuarios th:nth-child(1),
     .tabla-usuarios td:nth-child(1) {
       min-width: 90px;
@@ -529,7 +514,6 @@
     .geoballas-section .btn-icon:hover {
       opacity: 0.8;
     }
-    /* Contenedor para el mapa interactivo */
     #map {
       width: 100%;
       height: 400px;
@@ -538,7 +522,78 @@
     }
     
     /* ==============================
-       12. Media Queries
+       12. Nuevo Apartado: Registro Personal de Asistencias
+       ============================== */
+    .registro-personal {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(229,57,53,0.3);
+      width: 90%;
+      max-width: 1100px;
+      margin: 40px auto;
+      text-align: center;
+    }
+    .header-registro {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .filtros {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+    .date-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin: 0 10px;
+    }
+    .date-group label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .date-group input[type="date"] {
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      border-radius: 5px;
+    }
+    .tabla-registros {
+      overflow-x: auto;
+    }
+    .tabla-registros table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      table-layout: auto;
+    }
+    .tabla-registros th, .tabla-registros td {
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    .tabla-registros th {
+      background-color: #e53935;
+      color: #fff;
+    }
+    .tabla-registros td .foto-icon {
+      cursor: pointer;
+      color: #e53935;
+      font-size: 18px;
+    }
+    
+    /* ==============================
+       13. Media Queries
        ============================== */
     @media (max-width: 800px) {
       .form-usuarios .row-fields {
@@ -550,7 +605,8 @@
       }
     }
     @media (max-width: 600px) {
-      .tabla-usuarios th, .tabla-usuarios td {
+      .tabla-usuarios th, .tabla-usuarios td,
+      .tabla-registros th, .tabla-registros td {
         font-size: 12px;
       }
       .login-box, .marcacion-box {
@@ -570,7 +626,6 @@
     }
   </style>
 </head>
-
 <body onload="inicializarPagina()">
   <!-- LOGIN -->
   <div class="login-box visible" id="loginDiv">
@@ -579,12 +634,10 @@
     </div>
     <h2><i class="fa-solid fa-lock"></i> Inicia Sesión</h2>
     <h3>Sistema de Asistencia SOLINPA</h3>
-
     <div class="input-group">
       <i class="fa-solid fa-user"></i>
       <input type="text" id="usuario" placeholder="DNI" required maxlength="8">
     </div>
-
     <div class="input-group">
       <i class="fa-solid fa-key"></i>
       <input type="password" id="contrasena" placeholder="Clave" required>
@@ -592,16 +645,14 @@
         <i class="fa-solid fa-eye-slash"></i>
       </span>
     </div>
-
     <button class="btn-red" id="loginBtn" onclick="enviarLogin()">
       <i class="fa-solid fa-right-to-bracket"></i> Entrar
     </button>
     <div class="spinner" id="loginSpinner"></div>
     <div class="mensaje" id="mensaje"></div>
-
     <footer>© <span id="anio"></span> - SOLINPA E.I.R.L.</footer>
   </div>
-
+  
   <!-- MARCACIÓN (Usuarios) -->
   <div class="marcacion-box hidden" id="mainContent">
     <div class="logo">
@@ -609,7 +660,6 @@
     </div>
     <h3>Marque su asistencia</h3>
     <div id="bienvenida">Bienvenido: Usuario</div>
-
     <div class="button-group">
       <button class="btn-red" id="registroBtn" onclick="registroAsistencia()">
         <i class="fa-solid fa-file-lines"></i> Ir a mi Registro de Asistencias
@@ -621,8 +671,6 @@
         <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
       </button>
     </div>
-
-    <!-- Etiquetas para Entrada y Salida -->
     <div class="marcacion-labels">
       <div class="entrada-label" id="entradaLabel">
         <i class="fa-solid fa-door-open"></i>
@@ -633,8 +681,6 @@
         <span>Salida: --:--</span>
       </div>
     </div>
-
-    <!-- Botones para marcar Entrada y Salida -->
     <div class="button-group">
       <button class="btn-orange" onclick="iniciarCamara('Entrada')">
         <i class="fa-solid fa-door-open"></i> Marcar Entrada
@@ -643,11 +689,53 @@
         <i class="fa-solid fa-door-closed"></i> Marcar Salida
       </button>
     </div>
-    
     <video id="video" autoplay playsinline></video>
     <div class="mensaje" id="mensajeEvento"></div>
   </div>
-
+  
+  <!-- REGISTRO PERSONAL DE ASISTENCIAS -->
+  <div class="registro-personal hidden" id="registroPersonal">
+    <div class="header-registro">
+      <h3>Mi Registro de Asistencias</h3>
+      <div class="button-group">
+        <button class="btn-gray" onclick="volverAlMenu()">
+          <i class="fa-solid fa-arrow-left"></i> Regresar
+        </button>
+        <button class="btn-gray" onclick="cerrarSesion()">
+          <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+        </button>
+      </div>
+    </div>
+    <div class="filtros">
+      <div class="date-group">
+        <label for="fechaInicio">Fecha Inicio:</label>
+        <input type="date" id="fechaInicio">
+      </div>
+      <div class="date-group">
+        <label for="fechaFin">Fecha Fin:</label>
+        <input type="date" id="fechaFin">
+      </div>
+      <button class="btn-blue" onclick="filtrarRegistros()">
+        <i class="fa-solid fa-filter"></i> Filtrar
+      </button>
+    </div>
+    <div class="tabla-registros">
+      <table id="tablaRegistros">
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Nombre</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Hora</th>
+            <th>Lugar</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyRegistros"></tbody>
+      </table>
+    </div>
+  </div>
+  
   <!-- PANEL DE ADMINISTRACIÓN -->
   <div class="admin-panel hidden" id="adminPanel">
     <div class="admin-navbar">
@@ -754,14 +842,12 @@
         <div class="input-group">
           <input type="text" id="geoballaLugar" placeholder="Lugar">
         </div>
-        <!-- El campo de Ubicación se llenará automáticamente desde el mapa -->
         <div class="input-group">
           <input type="text" id="geoballaUbicacion" placeholder="Ubicación (lat, lng)" readonly>
         </div>
         <div class="input-group">
           <input type="number" id="geoballaRadio" placeholder="Radio (m)">
         </div>
-        <!-- Contenedor para el mapa interactivo -->
         <div id="map"></div>
         <button class="btn-blue" onclick="guardarGeoballa()">Guardar Geoballa</button>
       </div>
@@ -769,7 +855,7 @@
       
     </div>
   </div>
-
+  
   <!-- Fancy Alert Modal (Mensaje) -->
   <div id="fancyAlertOverlay">
     <div id="fancyAlertBox">
@@ -781,7 +867,7 @@
       <button id="fancyAlertClose">Aceptar</button>
     </div>
   </div>
-
+  
   <!-- Fancy Confirm Modal (Confirmación personalizada) -->
   <div id="fancyConfirmOverlay">
     <div id="fancyConfirmBox">
@@ -796,7 +882,7 @@
       </div>
     </div>
   </div>
-
+  
   <script>
     /************** INICIALIZACIÓN Y CONFIGURACIÓN **************/
     function inicializarPagina() {
@@ -805,7 +891,7 @@
       iconoOjo.addEventListener("click", togglePassword);
       verificarSesionActiva();
     }
-
+    
     /************** CONTROL DE SESIÓN Y LOGIN **************/
     function verificarSesionActiva() {
       google.script.run.withSuccessHandler(function(estaActivo){
@@ -827,7 +913,7 @@
         }
       }).validarSesionActiva();
     }
-
+    
     function enviarLogin() {
       const loginBtn = document.getElementById("loginBtn");
       const spinner = document.getElementById("loginSpinner");
@@ -854,7 +940,7 @@
         }
       }).validarLogin(usuario, contrasena);
     }
-
+    
     function togglePassword() {
       const input = document.getElementById("contrasena");
       const icono = document.getElementById("iconoOjo");
@@ -866,14 +952,14 @@
         icono.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
       }
     }
-
+    
     function obtenerNombreUsuario() {
       google.script.run.withSuccessHandler(function(nombre) {
         document.getElementById("bienvenida").innerText = "Bienvenido: " + nombre;
         document.getElementById("adminNombre").innerText = nombre;
       }).obtenerNombreUsuario();
     }
-
+    
     function obtenerNivelUsuario() {
       google.script.run.withSuccessHandler(function(nivel) {
         if (Number(nivel) === 1) {
@@ -883,7 +969,7 @@
         }
       }).obtenerNivelUsuario();
     }
-
+    
     /************** MARCACIONES Y REGISTRO DE ASISTENCIA **************/
     function cargarMarcacionesHoy() {
       google.script.run.withSuccessHandler(function(registros) {
@@ -900,14 +986,13 @@
         });
       }).obtenerMarcacionesHoy();
     }
-
-    /************** NUEVO FLUJO DE ASISTENCIA **************/
+    
+    /************** FLUJO DE CÁMARA Y ASISTENCIA **************/
     let streamActivo = null;
     let ubicacionActual = "";
-    let tipoEventoPendiente = null;  // 'Entrada' o 'Salida'
-
+    let tipoEventoPendiente = null;
+    
     function iniciarCamara(tipo) {
-      // Asigna el tipo de evento seleccionado
       tipoEventoPendiente = tipo;
       const video = document.getElementById("video");
       video.style.display = "block";
@@ -922,7 +1007,7 @@
           showFancyAlert("No se pudo acceder a la cámara: " + error.message);
         });
     }
-
+    
     function mostrarBotonRegistrar() {
       if (!document.getElementById("btnRegistrar")) {
         const btn = document.createElement("button");
@@ -936,7 +1021,7 @@
         document.getElementById("mainContent").appendChild(btn);
       }
     }
-
+    
     function obtenerUbicacion() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -952,7 +1037,7 @@
         ubicacionActual = "No soportado";
       }
     }
-
+    
     function capturarFotoYRegistrar() {
       const video = document.getElementById("video");
       if (!video) return;
@@ -976,7 +1061,6 @@
             stopCamera();
             return;
           }
-          // Validar horario
           google.script.run.withSuccessHandler(function(respuesta) {
             if (respuesta.permitido === true) {
               verificarGeoballaYRegistrar(base64Img, ubicacionActual, tipoEvento);
@@ -999,7 +1083,7 @@
         reader.readAsDataURL(blob);
       }, 'image/jpeg');
     }
-
+    
     function verificarGeoballaYRegistrar(base64Img, ubicacion, tipoEvento) {
       google.script.run.withSuccessHandler(function(geoResult) {
         if (!geoResult || !geoResult.dentro) {
@@ -1010,7 +1094,6 @@
           stopCamera();
           return;
         }
-        // Subir imagen y registrar asistencia
         google.script.run.withSuccessHandler(function(resFinal) {
           showFancyAlert(resFinal.mensaje);
           stopCamera();
@@ -1018,7 +1101,7 @@
         }).subirYRegistrarAsistencia(base64Img, ubicacion, tipoEvento);
       }).verificarGeoballa(ubicacion);
     }
-
+    
     function stopCamera() {
       if (streamActivo) {
         streamActivo.getTracks().forEach(function(track) {
@@ -1031,7 +1114,106 @@
       const btnRegistrar = document.getElementById("btnRegistrar");
       if (btnRegistrar) btnRegistrar.remove();
     }
-
+    
+    /************** NUEVO APARTADO: REGISTRO PERSONAL DE ASISTENCIAS **************/
+    function registroAsistencia() {
+      mostrarRegistroPersonal();
+    }
+    function mostrarRegistroPersonal() {
+      document.getElementById("mainContent").classList.remove("visible");
+      document.getElementById("mainContent").classList.add("hidden");
+      setTimeout(() => {
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("registroPersonal").style.display = "block";
+        document.getElementById("registroPersonal").classList.add("visible");
+        cargarRegistrosUsuario("", "");
+      }, 300);
+    }
+    function volverAlMenu() {
+      document.getElementById("registroPersonal").classList.remove("visible");
+      document.getElementById("registroPersonal").classList.add("hidden");
+      setTimeout(() => {
+        document.getElementById("registroPersonal").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+        document.getElementById("mainContent").classList.add("visible");
+      }, 300);
+    }
+    function filtrarRegistros() {
+      var fechaInicio = document.getElementById("fechaInicio").value;
+      var fechaFin = document.getElementById("fechaFin").value;
+      if (!fechaInicio || !fechaFin) {
+        showFancyAlert("Por favor, selecciona ambas fechas para filtrar.");
+        return;
+      }
+      cargarRegistrosUsuario(fechaInicio, fechaFin);
+    }
+    function cargarRegistrosUsuario(fechaInicio, fechaFin) {
+      google.script.run.withSuccessHandler(renderizarRegistros)
+        .obtenerRegistrosUsuario(fechaInicio, fechaFin);
+    }
+    function renderizarRegistros(registros) {
+      const tbody = document.getElementById("tbodyRegistros");
+      tbody.innerHTML = "";
+      if (registros.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.textContent = "No se encontraron registros.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      registros.forEach(reg => {
+        const tr = document.createElement("tr");
+        
+        // Columna Foto
+        const tdFoto = document.createElement("td");
+        if (reg.foto) {
+          const icono = document.createElement("i");
+          icono.classList.add("fa-solid", "fa-image", "foto-icon");
+          icono.title = "Ver foto";
+          icono.onclick = function() { verFoto(reg.foto); };
+          tdFoto.appendChild(icono);
+        } else {
+          tdFoto.textContent = "Sin foto";
+        }
+        tr.appendChild(tdFoto);
+        
+        // Nombre
+        const tdNombre = document.createElement("td");
+        tdNombre.textContent = reg.nombre || "";
+        tr.appendChild(tdNombre);
+        
+        // Fecha
+        const tdFecha = document.createElement("td");
+        tdFecha.textContent = reg.fecha || "";
+        tr.appendChild(tdFecha);
+        
+        // Tipo
+        const tdTipo = document.createElement("td");
+        tdTipo.textContent = reg.tipo || "";
+        tr.appendChild(tdTipo);
+        
+        // Hora
+        const tdHora = document.createElement("td");
+        tdHora.textContent = reg.hora || "";
+        tr.appendChild(tdHora);
+        
+        // Lugar
+        const tdLugar = document.createElement("td");
+        tdLugar.textContent = reg.lugar || "";
+        tr.appendChild(tdLugar);
+        
+        tbody.appendChild(tr);
+      });
+    }
+    function verFoto(url) {
+      const overlay = document.getElementById("fancyAlertOverlay");
+      const msg = document.getElementById("fancyAlertMessage");
+      msg.innerHTML = '<img src="'+url+'" style="max-width:100%; border-radius:8px;">';
+      overlay.classList.add("active");
+    }
+    
     /************** PANEL DE ADMINISTRACIÓN Y USUARIOS **************/
     function mostrarAdminPanel() {
       document.getElementById("mainContent").classList.remove("visible");
@@ -1045,14 +1227,12 @@
         document.getElementById("geoballasSection").style.display = "none";
       }, 300);
     }
-
     function mostrarUsersSection() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "block";
       document.getElementById("geoballasSection").style.display = "none";
       google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
     }
-
     function mostrarGeoballas() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
@@ -1066,7 +1246,6 @@
         map.setCenter({ lat: -8.109, lng: -79.021 });
       }, 100);
     }
-
     function renderizarUsuarios(lista) {
       const tbody = document.getElementById("tbodyUsuarios");
       tbody.innerHTML = "";
@@ -1111,7 +1290,6 @@
         tbody.appendChild(tr);
       });
     }
-
     function renderizarGeoballas(geoballas) {
       const tbody = document.getElementById("tbodyGeoballas");
       tbody.innerHTML = "";
@@ -1141,31 +1319,20 @@
         tbody.appendChild(tr);
       });
     }
-
     function confirmarEdicionUsuario(usuario) {
       showFancyConfirm(
         `¿Está seguro de que desea editar al usuario con DNI: ${usuario.dni}?`,
-        () => {
-          editarUsuario(usuario);
-        },
-        () => {
-          console.log("Edición cancelada");
-        }
+        () => { editarUsuario(usuario); },
+        () => { console.log("Edición cancelada"); }
       );
     }
-
     function confirmarEdicionGeoballa(geo) {
       showFancyConfirm(
         `¿Está seguro de que desea editar la geoballa para el lugar: ${geo.lugar}?`,
-        () => {
-          editarGeoballa(geo);
-        },
-        () => {
-          console.log("Edición de geoballa cancelada");
-        }
+        () => { editarGeoballa(geo); },
+        () => { console.log("Edición de geoballa cancelada"); }
       );
     }
-
     function editarUsuario(usuario) {
       document.getElementById("usuarioDni").value = usuario.dni;
       document.getElementById("nombreCompleto").value = usuario.nombre;
@@ -1176,26 +1343,19 @@
       document.getElementById("nivel").value = usuario.nivel;
       document.getElementById("horasExtras").value = usuario.horasExtras;
     }
-
     function eliminarUsuario(dni) {
       showFancyConfirm(
         `¿Está seguro de que desea eliminar al usuario con DNI: ${dni}?\nEsta acción no se puede deshacer.`,
         () => {
           google.script.run.withSuccessHandler((exito) => {
-            if (exito) {
-              showFancyAlert("Usuario eliminado correctamente.");
-            } else {
-              showFancyAlert(`No se encontró el usuario con DNI: ${dni}.`);
-            }
+            if (exito) { showFancyAlert("Usuario eliminado correctamente."); }
+            else { showFancyAlert(`No se encontró el usuario con DNI: ${dni}.`); }
             google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
           }).eliminarUsuario(dni);
         },
-        () => {
-          console.log("Eliminación cancelada");
-        }
+        () => { console.log("Eliminación cancelada"); }
       );
     }
-
     function editarGeoballa(geo) {
       document.getElementById("geoballaLugar").value = geo.lugar;
       document.getElementById("geoballaUbicacion").value = geo.ubicacion;
@@ -1209,19 +1369,13 @@
           marker = new google.maps.Marker({
             position: newPos,
             map: map,
-            icon: {
-              url: "https://i.imgur.com/tud5XMS.png",
-              scaledSize: new google.maps.Size(32, 32)
-            }
+            icon: { url: "https://i.imgur.com/tud5XMS.png", scaledSize: new google.maps.Size(32, 32) }
           });
-        } else {
-          marker.setPosition(newPos);
-        }
+        } else { marker.setPosition(newPos); }
         updateCircle(newPos);
         map.setCenter(newPos);
       }
     }
-
     function eliminarGeoballa(lugar) {
       showFancyConfirm(
         `¿Está seguro de que desea eliminar la geoballa para el lugar: ${lugar}?`,
@@ -1231,12 +1385,9 @@
             mostrarGeoballas();
           }).eliminarGeoballa(lugar);
         },
-        () => {
-          console.log("Eliminación de geoballa cancelada");
-        }
+        () => { console.log("Eliminación de geoballa cancelada"); }
       );
     }
-
     function guardarGeoballa() {
       const lugar = document.getElementById("geoballaLugar").value.trim();
       const ubicacion = document.getElementById("geoballaUbicacion").value.trim();
@@ -1251,7 +1402,6 @@
         mostrarGeoballas();
       }).guardarGeoballa(geoObj);
     }
-
     function limpiarFormulario() {
       document.getElementById("usuarioDni").value = "";
       document.getElementById("nombreCompleto").value = "";
@@ -1262,7 +1412,6 @@
       document.getElementById("nivel").value = "";
       document.getElementById("horasExtras").value = "";
     }
-
     function guardarUsuario() {
       const dni = document.getElementById("usuarioDni").value.trim();
       const nombre = document.getElementById("nombreCompleto").value.trim();
@@ -1281,12 +1430,7 @@
         return;
       }
       const userObj = {
-        dni,
-        nombre,
-        area,
-        cargo,
-        email,
-        contrasena,
+        dni, nombre, area, cargo, email, contrasena,
         nivel: parseInt(nivel, 10),
         horasExtras: parseInt(horasExtras, 10)
       };
@@ -1305,25 +1449,22 @@
         })
         .guardarUsuarioEnHoja(userObj);
     }
-
+    
     /************** CIERRE DE SESIÓN **************/
     function cerrarSesion() {
       google.script.run.withSuccessHandler(() => {
-        document.getElementById("adminPanel").classList.remove("visible");
-        document.getElementById("adminPanel").classList.add("hidden");
-        document.getElementById("mainContent").classList.remove("visible");
-        document.getElementById("mainContent").classList.add("hidden");
-        setTimeout(() => {
-          document.getElementById("adminPanel").style.display = "none";
-          document.getElementById("mainContent").style.display = "none";
-          document.getElementById("loginDiv").style.display = "block";
-          document.getElementById("loginDiv").classList.add("visible");
-          document.getElementById("usuario").value = "";
-          document.getElementById("contrasena").value = "";
-        }, 300);
+        // Reiniciar todas las vistas: ocultar admin, marcación y registro, y mostrar login con clases reseteadas
+        document.getElementById("adminPanel").style.display = "none";
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("registroPersonal").style.display = "none";
+        document.getElementById("loginDiv").style.display = "block";
+        document.getElementById("loginDiv").className = "login-box visible";
+        // Reiniciar inputs de login
+        document.getElementById("usuario").value = "";
+        document.getElementById("contrasena").value = "";
       }).cerrarSesion();
     }
-
+    
     /************** FANCY ALERT (Mensaje) **************/
     function showFancyAlert(message) {
       const overlay = document.getElementById("fancyAlertOverlay");
@@ -1336,7 +1477,7 @@
       overlay.classList.remove("active");
     }
     document.getElementById("fancyAlertClose").addEventListener("click", closeFancyAlert);
-
+    
     /************** FANCY CONFIRM (Confirmación personalizada) **************/
     function showFancyConfirm(message, onYes, onNo) {
       const overlay = document.getElementById("fancyConfirmOverlay");
@@ -1356,7 +1497,7 @@
         if (typeof onNo === "function") onNo();
       };
     }
-
+    
     /************** ESTADÍSTICAS Y REPORTES **************/
     function mostrarEstadisticas() {
       document.getElementById("adminPanel").classList.remove("hidden");
@@ -1375,30 +1516,23 @@
         showFancyAlert(mensaje);
       }).obtenerEstadisticas();
     }
-
     function reporteGeneral() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
       document.getElementById("geoballasSection").style.display = "none";
       showFancyAlert("Función de Reporte General en construcción...");
     }
-
     function reporteIndividual() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
       document.getElementById("geoballasSection").style.display = "none";
       showFancyAlert("Función de Reporte Individual en construcción...");
     }
-
-    function registroAsistencia() {
-      showFancyAlert("Función de Registro de Asistencias en construcción...");
-    }
     
-    /* ============ Funciones para el mapa de Geoballas ============ */
-    var map;  // Variable global para el mapa
-    var marker; // Variable global para el marcador
-    var circle; // Variable global para el círculo
-
+    /************** Funciones para el mapa de Geoballas **************/
+    var map;  
+    var marker;
+    var circle;
     function updateCircle(center) {
       var radioInput = document.getElementById("geoballaRadio").value;
       var radio = parseFloat(radioInput);
@@ -1419,7 +1553,6 @@
         circle.setRadius(radio);
       }
     }
-
     function initMap() {
       const defaultLatLng = { lat: -8.109, lng: -79.021 };
       map = new google.maps.Map(document.getElementById("map"), {
