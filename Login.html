@@ -13,7 +13,6 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      /* Usar 100vh para asegurar que ocupe la pantalla completa */
       min-height: 100vh;
       background: linear-gradient(to right, #ece9e6, #ffffff);
     }
@@ -46,9 +45,9 @@
     }
     
     /* ==============================
-       3. Contenedores: Login, Marcación, Panel Admin, Registro Personal
+       3. Contenedores: Login, Marcación, Panel Admin, Registro Personal, Reporte General
        ============================== */
-    .login-box, .marcacion-box, .admin-panel, .registro-personal {
+    .login-box, .marcacion-box, .admin-panel, .registro-personal, .reporte-general {
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
@@ -59,7 +58,7 @@
     .login-box, .marcacion-box {
       max-width: 400px;
     }
-    .admin-panel, .registro-personal {
+    .admin-panel, .registro-personal, .reporte-general {
       max-width: 1100px;
     }
     .logo {
@@ -84,7 +83,9 @@
     input[type="text"],
     input[type="password"],
     input[type="number"],
-    input[type="date"] {
+    input[type="date"],
+    input[type="time"],
+    select {
       width: 100%;
       padding: 10px 35px;
       border: 2px solid #ddd;
@@ -92,7 +93,7 @@
       outline: none;
       box-sizing: border-box;
     }
-    input:focus {
+    input:focus, select:focus {
       border-color: #e53935;
     }
     .input-group i {
@@ -593,8 +594,94 @@
     }
     
     /* ==============================
-       13. Media Queries
+       13. Nuevo Apartado: Reporte General (para Admin)
        ============================== */
+    .reporte-general {
+      display: none;
+      padding: 20px;
+    }
+    .header-reporte {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header-reporte h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+    }
+    
+    /* ==============================
+       14. Modal para Añadir Registro
+       ============================== */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 20000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      text-align: left;
+    }
+    .modal h3 {
+      margin-top: 0;
+    }
+    .modal .input-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .modal .input-group input, 
+    .modal .input-group select,
+    .modal .input-group textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+    }
+    
+    /* ==============================
+       15. Modal para Editar Registro
+       ============================== */
+    #modalEditRegistro {
+      display: none;
+      position: fixed;
+      z-index: 20000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    #modalEditRegistro .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      text-align: left;
+    }
+    #modalEditRegistro .modal-content h3 {
+      margin-top: 0;
+    }
+    
     @media (max-width: 800px) {
       .form-usuarios .row-fields {
         flex-direction: column;
@@ -852,7 +939,137 @@
         <button class="btn-blue" onclick="guardarGeoballa()">Guardar Geoballa</button>
       </div>
       <!-- Fin Sección Geoballas -->
+    </div>
+  </div>
+  
+  <!-- NUEVA SECCIÓN: REPORTE GENERAL -->
+  <div class="reporte-general hidden" id="reporteGeneralSection">
+    <div class="header-reporte">
+      <h3><i class="fa-solid fa-table"></i> Reporte General</h3>
+      <div class="button-group">
+        <button class="btn-gray" onclick="volverAlAdminPanel()">
+          <i class="fa-solid fa-arrow-left"></i> Volver a Admin Panel
+        </button>
+      </div>
+    </div>
+    <div class="filtros">
+      <div class="date-group">
+        <label for="rgFechaInicio">Fecha Inicio:</label>
+        <input type="date" id="rgFechaInicio">
+      </div>
+      <div class="date-group">
+        <label for="rgFechaFin">Fecha Fin:</label>
+        <input type="date" id="rgFechaFin">
+      </div>
+      <button class="btn-blue" onclick="filtrarReporteGeneral()">
+        <i class="fa-solid fa-filter"></i> Filtrar
+      </button>
+      <button class="btn-blue" onclick="mostrarModalAddRegistro()">
+        <i class="fa-solid fa-plus"></i> Añadir Registro
+      </button>
+    </div>
+    <div class="tabla-registros">
+      <table id="tablaReporteGeneral">
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Nombre</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Observaciones</th>
+            <th>Ubicación</th>
+            <th>Lugar</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyReporteGeneral"></tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- Modal para Añadir Registro Manual -->
+  <div id="modalAddRegistro" class="modal">
+    <div class="modal-content">
+      <h3>Añadir Registro</h3>
+      <div class="input-group">
+        <label for="addDNI">DNI:</label>
+        <input type="text" id="addDNI" maxlength="8" pattern="^\d{8}$">
+      </div>
+      <div class="input-group">
+        <label for="addNombre">Nombre:</label>
+        <input type="text" id="addNombre" readonly>
+      </div>
+      <div class="input-group">
+        <label for="addTipo">Tipo:</label>
+        <select id="addTipo">
+          <option value="Entrada">Entrada</option>
+          <option value="Salida">Salida</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="addHora">Hora:</label>
+        <input type="time" id="addHora">
+      </div>
+      <!-- Nuevo: Observaciones -->
+      <div class="input-group">
+        <label for="addObs">Observaciones:</label>
+        <textarea id="addObs" rows="3" placeholder="Opcional"></textarea>
+      </div>
+      <!-- Nuevo: Select Lugar -->
+      <div class="input-group">
+        <label for="addLugarSelect">Lugar:</label>
+        <select id="addLugarSelect" onchange="onAddLugarChange(this.value)"></select>
+      </div>
+      <!-- Ubicacion oculta, se llena según la geoballa elegida -->
+      <input type="hidden" id="addUbicacion">
       
+      <div class="actions-usuarios">
+        <button class="btn-gray" onclick="cerrarModalAddRegistro()">
+          <i class="fa-solid fa-xmark"></i> Cancelar
+        </button>
+        <button class="btn-blue" onclick="guardarRegistroManual()">
+          <i class="fa-solid fa-floppy-disk"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para Editar Registro Manual -->
+  <div id="modalEditRegistro">
+    <div class="modal-content">
+      <h3>Editar Registro</h3>
+      <!-- Guardamos el ID del registro en un input hidden -->
+      <input type="hidden" id="editRegId">
+      <div class="input-group">
+        <label for="editTipo">Tipo:</label>
+        <select id="editTipo">
+          <option value="Entrada">Entrada</option>
+          <option value="Salida">Salida</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="editHora">Hora:</label>
+        <input type="time" id="editHora">
+      </div>
+      <div class="input-group">
+        <label for="editObs">Observaciones:</label>
+        <textarea id="editObs" rows="3" placeholder="Opcional"></textarea>
+      </div>
+      <div class="input-group">
+        <label for="editLugarSelect">Lugar:</label>
+        <select id="editLugarSelect" onchange="onEditLugarChange(this.value)"></select>
+      </div>
+      <input type="hidden" id="editUbicacion">
+      
+      <div class="actions-usuarios">
+        <button class="btn-gray" onclick="cerrarModalEditRegistro()">
+          <i class="fa-solid fa-xmark"></i> Cancelar
+        </button>
+        <button class="btn-blue" onclick="enviarActualizacionRegistro()">
+          <i class="fa-solid fa-floppy-disk"></i> Actualizar
+        </button>
+      </div>
     </div>
   </div>
   
@@ -885,6 +1102,8 @@
   
   <script>
     /************** INICIALIZACIÓN Y CONFIGURACIÓN **************/
+    let geoballasList = [];  // Para almacenar la lista de geoballas y usarlas en los selects
+
     function inicializarPagina() {
       document.getElementById("anio").textContent = new Date().getFullYear();
       const iconoOjo = document.getElementById("iconoOjo");
@@ -1291,6 +1510,7 @@
       });
     }
     function renderizarGeoballas(geoballas) {
+      geoballasList = geoballas; // Guardamos la lista de geoballas para usarlas en selects
       const tbody = document.getElementById("tbodyGeoballas");
       tbody.innerHTML = "";
       geoballas.forEach(geo => {
@@ -1318,7 +1538,40 @@
         tr.appendChild(tdAcciones);
         tbody.appendChild(tr);
       });
+      
+      // Cargamos en los <select> (añadir y editar) las geoballas
+      cargarGeoballasEnSelect("addLugarSelect");
+      cargarGeoballasEnSelect("editLugarSelect");
     }
+    
+    // Carga las geoballas en un <select> dado su ID
+    function cargarGeoballasEnSelect(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      select.innerHTML = "";
+      geoballasList.forEach(g => {
+        const option = document.createElement("option");
+        option.value = g.lugar;
+        option.textContent = g.lugar;
+        select.appendChild(option);
+      });
+    }
+    
+    // Cuando cambie el lugar en "Añadir Registro"
+    function onAddLugarChange(lugarSel) {
+      const geo = geoballasList.find(g => g.lugar === lugarSel);
+      if (geo) {
+        document.getElementById("addUbicacion").value = geo.ubicacion;
+      }
+    }
+    // Cuando cambie el lugar en "Editar Registro"
+    function onEditLugarChange(lugarSel) {
+      const geo = geoballasList.find(g => g.lugar === lugarSel);
+      if (geo) {
+        document.getElementById("editUbicacion").value = geo.ubicacion;
+      }
+    }
+    
     function confirmarEdicionUsuario(usuario) {
       showFancyConfirm(
         `¿Está seguro de que desea editar al usuario con DNI: ${usuario.dni}?`,
@@ -1453,13 +1706,12 @@
     /************** CIERRE DE SESIÓN **************/
     function cerrarSesion() {
       google.script.run.withSuccessHandler(() => {
-        // Reiniciar todas las vistas: ocultar admin, marcación y registro, y mostrar login con clases reseteadas
         document.getElementById("adminPanel").style.display = "none";
         document.getElementById("mainContent").style.display = "none";
         document.getElementById("registroPersonal").style.display = "none";
+        document.getElementById("reporteGeneralSection").style.display = "none";
         document.getElementById("loginDiv").style.display = "block";
         document.getElementById("loginDiv").className = "login-box visible";
-        // Reiniciar inputs de login
         document.getElementById("usuario").value = "";
         document.getElementById("contrasena").value = "";
       }).cerrarSesion();
@@ -1517,16 +1769,246 @@
       }).obtenerEstadisticas();
     }
     function reporteGeneral() {
-      document.getElementById("adminPanel").style.display = "block";
-      document.getElementById("usersSection").style.display = "none";
-      document.getElementById("geoballasSection").style.display = "none";
-      showFancyAlert("Función de Reporte General en construcción...");
+      document.getElementById("adminPanel").classList.remove("visible");
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("reporteGeneralSection").style.display = "block";
+      setTimeout(() => {
+        document.getElementById("reporteGeneralSection").classList.add("visible");
+      }, 300);
+      filtrarReporteGeneral();
     }
     function reporteIndividual() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
       document.getElementById("geoballasSection").style.display = "none";
       showFancyAlert("Función de Reporte Individual en construcción...");
+    }
+    
+    /************** Funciones para el Reporte General **************/
+    function filtrarReporteGeneral() {
+      var fechaInicio = document.getElementById("rgFechaInicio").value;
+      var fechaFin = document.getElementById("rgFechaFin").value;
+      google.script.run.withSuccessHandler(renderizarReporteGeneral)
+        .obtenerRegistrosUsuario(fechaInicio, fechaFin);
+    }
+    function renderizarReporteGeneral(registros) {
+      const tbody = document.getElementById("tbodyReporteGeneral");
+      tbody.innerHTML = "";
+      if (registros.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 9;
+        td.textContent = "No se encontraron registros.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      registros.forEach(reg => {
+        const tr = document.createElement("tr");
+        
+        // Columna Foto (botón para ver la foto)
+        const tdFoto = document.createElement("td");
+        if (reg.foto) {
+          const btnFoto = document.createElement("button");
+          btnFoto.classList.add("btn-gray");
+          btnFoto.innerHTML = '<i class="fa-solid fa-image"></i>';
+          btnFoto.onclick = function() { verFoto(reg.foto); };
+          tdFoto.appendChild(btnFoto);
+        } else {
+          tdFoto.textContent = "Sin foto";
+        }
+        tr.appendChild(tdFoto);
+        
+        // Nombre
+        const tdNombre = document.createElement("td");
+        tdNombre.textContent = reg.nombre || "";
+        tr.appendChild(tdNombre);
+        
+        // Fecha
+        const tdFecha = document.createElement("td");
+        tdFecha.textContent = reg.fecha || "";
+        tr.appendChild(tdFecha);
+        
+        // Hora
+        const tdHora = document.createElement("td");
+        tdHora.textContent = reg.hora || "";
+        tr.appendChild(tdHora);
+        
+        // Tipo
+        const tdTipo = document.createElement("td");
+        tdTipo.textContent = reg.tipo || "";
+        tr.appendChild(tdTipo);
+        
+        // Observaciones
+        const tdObs = document.createElement("td");
+        tdObs.textContent = reg.observaciones || "";
+        tr.appendChild(tdObs);
+        
+        // Ubicación
+        const tdUbicacion = document.createElement("td");
+        tdUbicacion.textContent = reg.ubicacion || "";
+        tr.appendChild(tdUbicacion);
+        
+        // Lugar
+        const tdLugar = document.createElement("td");
+        tdLugar.textContent = reg.lugar || "";
+        tr.appendChild(tdLugar);
+        
+        // Acciones (botones editar y eliminar)
+        const tdAcciones = document.createElement("td");
+        const btnEdit = document.createElement("button");
+        btnEdit.classList.add("btn-orange");
+        btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+        btnEdit.onclick = function() { editarRegistroManual(reg); };
+        const btnDelete = document.createElement("button");
+        btnDelete.classList.add("btn-red");
+        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
+        tdAcciones.appendChild(btnEdit);
+        tdAcciones.appendChild(btnDelete);
+        tr.appendChild(tdAcciones);
+        
+        tbody.appendChild(tr);
+      });
+    }
+    
+    function volverAlAdminPanel() {
+      document.getElementById("reporteGeneralSection").classList.remove("visible");
+      setTimeout(() => {
+        document.getElementById("reporteGeneralSection").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("adminPanel").classList.add("visible");
+      }, 300);
+    }
+    
+    /************** Funciones para el Modal de Añadir Registro **************/
+    function mostrarModalAddRegistro() {
+      const now = new Date();
+      let hora = now.toTimeString().slice(0,5);
+      document.getElementById("addHora").value = hora;
+      // Dejamos Observaciones vacío
+      document.getElementById("addObs").value = "";
+      // Seleccionamos la primera geoballa por defecto (si existe)
+      if (geoballasList.length > 0) {
+        document.getElementById("addLugarSelect").value = geoballasList[0].lugar;
+        document.getElementById("addUbicacion").value = geoballasList[0].ubicacion;
+      }
+      // Vacía el DNI
+      document.getElementById("addDNI").value = "";
+      document.getElementById("addNombre").value = "";
+      document.getElementById("modalAddRegistro").style.display = "block";
+    }
+    function cerrarModalAddRegistro() {
+      document.getElementById("modalAddRegistro").style.display = "none";
+    }
+    // Auto-completar nombre cuando se ingresa el DNI en el modal
+    document.getElementById("addDNI").addEventListener("change", function(){
+      const dni = this.value.trim();
+      if (dni.length === 8) {
+        google.script.run.withSuccessHandler(function(nombre) {
+          document.getElementById("addNombre").value = nombre || "";
+        }).obtenerNombrePorDNI(dni);
+      }
+    });
+    function guardarRegistroManual() {
+      const dni = document.getElementById("addDNI").value.trim();
+      const nombre = document.getElementById("addNombre").value.trim();
+      const tipo = document.getElementById("addTipo").value;
+      const hora = document.getElementById("addHora").value;
+      const obs = document.getElementById("addObs").value.trim();
+      const lugar = document.getElementById("addLugarSelect").value;
+      const ubicacion = document.getElementById("addUbicacion").value;
+      
+      if (!dni || dni.length !== 8) {
+        showFancyAlert("Por favor, ingresa un DNI válido de 8 dígitos.");
+        return;
+      }
+      if (!nombre) {
+        showFancyAlert("No se pudo autocompletar el nombre. Verifica el DNI.");
+        return;
+      }
+      const registro = {
+        dni: dni,
+        nombre: nombre,
+        fecha: new Date().toISOString().slice(0,10),
+        hora: hora,
+        tipo: tipo,
+        observaciones: obs,
+        ubicacion: ubicacion,
+        lugar: lugar
+      };
+      google.script.run.withSuccessHandler(function(res) {
+        showFancyAlert(res.mensaje || "Registro añadido correctamente.");
+        cerrarModalAddRegistro();
+        filtrarReporteGeneral();
+      }).guardarRegistroManual(registro);
+    }
+    
+    /************** Funciones para Editar Registro (Modal) **************/
+    function editarRegistroManual(registro) {
+      // Abrimos el modal y llenamos datos
+      document.getElementById("editRegId").value = registro.id || "";
+      document.getElementById("editTipo").value = registro.tipo || "Entrada";
+      document.getElementById("editHora").value = registro.hora.slice(0,5);
+      document.getElementById("editObs").value = registro.observaciones || "";
+      
+      // Seleccionamos el lugar en el <select> si coincide
+      if (registro.lugar) {
+        document.getElementById("editLugarSelect").value = registro.lugar;
+        // Buscamos la geoballa
+        const geo = geoballasList.find(g => g.lugar === registro.lugar);
+        if (geo) {
+          document.getElementById("editUbicacion").value = geo.ubicacion;
+        } else {
+          document.getElementById("editUbicacion").value = "";
+        }
+      }
+      document.getElementById("modalEditRegistro").style.display = "block";
+    }
+    function cerrarModalEditRegistro() {
+      document.getElementById("modalEditRegistro").style.display = "none";
+    }
+    
+    function enviarActualizacionRegistro() {
+      const regId = document.getElementById("editRegId").value;
+      const tipo = document.getElementById("editTipo").value;
+      const hora = document.getElementById("editHora").value;
+      const obs = document.getElementById("editObs").value.trim();
+      const lugar = document.getElementById("editLugarSelect").value;
+      const ubicacion = document.getElementById("editUbicacion").value;
+      
+      if (!regId) {
+        showFancyAlert("No se encontró el ID del registro a editar.");
+        return;
+      }
+      // Contruir objeto para actualizar
+      const registroEditado = {
+        id: regId,
+        tipo: tipo,
+        hora: hora,
+        observaciones: obs,
+        lugar: lugar,
+        ubicacion: ubicacion
+      };
+      // Llamar a la función en el servidor (app.gs) => actualizarRegistroManual(registroEditado)
+      google.script.run.withSuccessHandler(function(res){
+        showFancyAlert(res.mensaje || "Registro actualizado.");
+        cerrarModalEditRegistro();
+        filtrarReporteGeneral(); // refrescar la tabla
+      }).actualizarRegistroManual(registroEditado);
+    }
+    
+    function eliminarRegistroManual(registroId) {
+      showFancyConfirm(
+        "¿Está seguro de eliminar este registro?",
+        function() {
+          google.script.run.withSuccessHandler(function(res) {
+            showFancyAlert(res.mensaje || "Registro eliminado.");
+            filtrarReporteGeneral();
+          }).eliminarRegistroManual(registroId);
+        },
+        function() { console.log("Eliminación cancelada"); }
+      );
     }
     
     /************** Funciones para el mapa de Geoballas **************/
@@ -1593,3 +2075,4 @@
   <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap"></script>
 </body>
 </html>
+
