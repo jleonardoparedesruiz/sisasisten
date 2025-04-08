@@ -93,19 +93,14 @@ function obtenerMarcacionesHoy() {
     var userTrimmed = usuario.trim();
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
-      
-      // Formatear fecha
       var valorFecha = datos[i][2];
       var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
           ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
           : valorFecha.toString().trim();
-      
-      // Formatear hora
       var valorHora = datos[i][3];
       var horaFila = (valorHora instanceof Date && !isNaN(valorHora))
           ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
           : valorHora.toString().trim();
-      
       var tipo = datos[i][4].toString().trim();
       if (dniFila === userTrimmed && fechaFila === fechaHoy) {
         resultados.push({ tipo: tipo, fecha: fechaFila, hora: horaFila });
@@ -120,9 +115,8 @@ function obtenerMarcacionesHoy() {
 
 /**
  * obtenerRegistrosUsuario: Retorna un arreglo de objetos con todos los registros
- * del usuario logueado. Cada registro se devuelve de forma independiente,
- * incluyendo fecha, hora, tipo (Entrada/Salida), nombre, lugar y foto.
- * Si se proporcionan fechaInicio y fechaFin (formato "yyyy-MM-dd"), se filtra en ese rango.
+ * del usuario logueado (filtrados por fecha si se proveen fechaInicio y fechaFin).
+ * Se incluyen: fecha, hora, tipo, nombre, observaciones, ubicación, lugar, linkImagen y id (si existe).
  */
 function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
   try {
@@ -152,18 +146,24 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
           ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
           : valorHora.toString().trim();
       
-      var tipo = fila[4].toString().trim();
+      var tipo = fila[4] ? fila[4].toString().trim() : "";
       var nombre = fila[1] ? fila[1].toString() : "";
+      var observaciones = fila[5] ? fila[5].toString() : "";
+      var ubicacion = fila[6] ? fila[6].toString() : "";
       var lugar = fila[7] ? fila[7].toString() : "";
-      var foto = fila[8] ? fila[8].toString() : "";
+      var linkImagen = fila[8] ? fila[8].toString() : "";
+      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
       
       resultado.push({
         fecha: fechaStr,
         hora: horaStr,
         tipo: tipo,
         nombre: nombre,
+        observaciones: observaciones,
+        ubicacion: ubicacion,
         lugar: lugar,
-        foto: foto
+        foto: linkImagen,
+        id: id
       });
     }
     resultado.sort(function(a, b) {
@@ -528,7 +528,7 @@ function verificarGeoballa(ubicacion) {
       var lngGeo = parseFloat(geoParts[1].trim());
       if (isNaN(latGeo) || isNaN(lngGeo)) continue;
       var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
-      Logger.log(`🛰️ Revisando ${lugar} - Distancia: ${distancia} m | Radio: ${radio} m`);
+      Logger.log("🛰️ Revisando " + lugar + " - Distancia: " + distancia + " m | Radio: " + radio + " m");
       if (distancia <= radio) {
         return {
           lugar: lugar,
@@ -728,5 +728,126 @@ function obtenerFraseMotivacional(tipoFrase) {
   } catch (e) {
     Logger.log("Error en obtenerFraseMotivacional: " + e);
     return "¡Buen trabajo!";
+  }
+}
+
+/************** FUNCIONES NUEVAS PARA REGISTRO MANUAL **************/
+/**
+ * obtenerNombrePorDNI: Busca en la hoja "Usuarios" y retorna el nombre asociado al DNI.
+ */
+function obtenerNombrePorDNI(dni) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Usuarios");
+    var datos = hoja.getDataRange().getValues();
+    for (var i = 1; i < datos.length; i++) {
+      if (datos[i][0].toString().trim() === dni.trim()) {
+        return datos[i][1];
+      }
+    }
+    return "";
+  } catch (error) {
+    Logger.log("Error en obtenerNombrePorDNI: " + error);
+    return "";
+  }
+}
+
+/**
+ * guardarRegistroManual: Guarda un registro manual en la hoja "BDregistros".
+ * Se agrega un UUID en una nueva columna (posición 10) para identificar el registro.
+ */
+function guardarRegistroManual(registro) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var fecha = registro.fecha || Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
+    var regId = Utilities.getUuid();
+    hoja.appendRow([
+      registro.dni,
+      registro.nombre,
+      fecha,
+      registro.hora,
+      registro.tipo,
+      registro.observaciones || "",
+      registro.ubicacion,
+      registro.lugar,
+      "", // Link Imagen vacío
+      regId  // Columna para el ID
+    ]);
+    return { mensaje: "Registro manual guardado correctamente." };
+  } catch (error) {
+    Logger.log("Error en guardarRegistroManual: " + error);
+    return { mensaje: "Error al guardar registro manual: " + error };
+  }
+}
+
+/**
+ * eliminarRegistroManual: Elimina un registro manual de la hoja "BDregistros" buscando el ID en la columna 10.
+ */
+function eliminarRegistroManual(regId) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var data = hoja.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === regId) {
+        hoja.deleteRow(i + 1);
+        return { mensaje: "Registro eliminado correctamente." };
+      }
+    }
+    return { mensaje: "Registro no encontrado." };
+  } catch (error) {
+    Logger.log("Error en eliminarRegistroManual: " + error);
+    return { mensaje: "Error al eliminar el registro: " + error };
+  }
+}
+
+/************** GESTIÓN DE USUARIOS (Funciones ya existentes) **************/
+// (guardarUsuarioEnHoja, obtenerListaUsuarios, eliminarUsuario) ya definidas
+
+/************** ESTADÍSTICAS Y REPORTES (Funciones ya existentes) **************/
+// (obtenerEstadisticas) ya definida
+
+/************** CIERRE DE SESIÓN (Función ya existente) **************/
+// (cerrarSesion) ya definida
+
+/************** VALIDACIÓN AUTOMÁTICA DE ENTRADA/SALIDA (Funciones ya existentes) **************/
+// (verificarEntradaSinSalida) ya definida
+
+/************** FUNCIONES DE GEOBALLAS (Funciones ya existentes) **************/
+// (verificarGeoballa, calcularDistancia, toRad, guardarGeoballa, eliminarGeoballa, obtenerGeoballas) ya definidas
+
+/************** VALIDACIÓN DE HORARIOS Y FRASES MOTIVACIONALES (Funciones ya existentes) **************/
+// (validarHorario, obtenerValidacionHorario, obtenerFraseMotivacional) ya definidas
+
+// Nota: Puedes extender este archivo con funciones de edición manual de registros, por ejemplo:
+
+/**
+ * actualizarRegistroManual: Actualiza un registro manual en la hoja "BDregistros"
+ * buscando el registro por su ID (almacenado en la columna 10) y actualizando
+ * tipo (columna 5), hora (columna 4), observaciones (columna 6), lugar (columna 8) y ubicación (columna 7).
+ */
+function actualizarRegistroManual(registroEditado) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var data = hoja.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === registroEditado.id) {
+        // Actualizamos: hora (col 4), tipo (col 5), observaciones (col 6), ubicación (col 7), lugar (col 8)
+        hoja.getRange(i+1, 4).setValue(registroEditado.hora);
+        hoja.getRange(i+1, 5).setValue(registroEditado.tipo);
+        hoja.getRange(i+1, 6).setValue(registroEditado.observaciones);
+        hoja.getRange(i+1, 7).setValue(registroEditado.ubicacion);
+        hoja.getRange(i+1, 8).setValue(registroEditado.lugar);
+        return { mensaje: "Registro actualizado con éxito." };
+      }
+    }
+    return { mensaje: "Registro no encontrado." };
+  } catch (error) {
+    Logger.log("Error en actualizarRegistroManual: " + error);
+    return { mensaje: "Error al actualizar el registro: " + error };
   }
 }
