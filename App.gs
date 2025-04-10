@@ -179,6 +179,75 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
 }
 
 /**
+ * Obtener Reporte Individual: Devuelve un arreglo de objetos filtrado según DNI (si se especifica),
+ * rango de fechas y tipo de marcación. Esta función es para la consulta individual en el panel de admin.
+ */
+function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("BDregistros");
+    var datos = hoja.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var resultado = [];
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+      // Filtrar por DNI si se especifica
+      var dniFila = fila[0].toString().trim();
+      if (dni && dni.trim() !== "" && dniFila !== dni.trim()) continue;
+      
+      // Procesar fecha
+      var valorFecha = fila[2];
+      var fechaStr = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
+      
+      if (fechaInicio && fechaFin) {
+        if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
+      }
+      
+      // Procesar hora
+      var valorHora = fila[3];
+      var horaStr = (valorHora instanceof Date && !isNaN(valorHora))
+          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+          : valorHora.toString().trim();
+      
+      // Filtrar por tipo si se especifica (Entrada, Salida u otro)
+      var tipoFila = fila[4] ? fila[4].toString().trim() : "";
+      if (tipo && tipo.trim() !== "" && tipoFila !== tipo.trim()) continue;
+      
+      var nombre = fila[1] ? fila[1].toString() : "";
+      var observaciones = fila[5] ? fila[5].toString() : "";
+      var ubicacion = fila[6] ? fila[6].toString() : "";
+      var lugar = fila[7] ? fila[7].toString() : "";
+      var linkImagen = fila[8] ? fila[8].toString() : "";
+      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
+      
+      resultado.push({
+        dni: dniFila,
+        fecha: fechaStr,
+        hora: horaStr,
+        tipo: tipoFila,
+        nombre: nombre,
+        observaciones: observaciones,
+        ubicacion: ubicacion,
+        lugar: lugar,
+        foto: linkImagen,
+        id: id
+      });
+    }
+    resultado.sort(function(a, b) {
+      var compFecha = a.fecha.localeCompare(b.fecha);
+      if (compFecha !== 0) return compFecha;
+      return a.hora.localeCompare(b.hora);
+    });
+    return resultado;
+  } catch (error) {
+    Logger.log("Error en obtenerReporteIndividual: " + error);
+    return [];
+  }
+}
+
+/**
  * subirYRegistrarAsistencia: Sube la imagen, verifica la geolocalización (geoballa) y registra la asistencia.
  * Evita registros duplicados para el mismo tipo en el mismo día (para usuarios sin horas extras).
  */
@@ -783,7 +852,8 @@ function guardarRegistroManual(registro) {
 }
 
 /**
- * eliminarRegistroManual: Elimina un registro manual de la hoja "BDregistros" buscando el ID en la columna 10.
+ * eliminarRegistroManual: Elimina un registro manual de la hoja "BDregistros"
+ * buscando el ID en la columna 10.
  */
 function eliminarRegistroManual(regId) {
   try {
@@ -803,30 +873,10 @@ function eliminarRegistroManual(regId) {
   }
 }
 
-/************** GESTIÓN DE USUARIOS (Funciones ya existentes) **************/
-// (guardarUsuarioEnHoja, obtenerListaUsuarios, eliminarUsuario) ya definidas
-
-/************** ESTADÍSTICAS Y REPORTES (Funciones ya existentes) **************/
-// (obtenerEstadisticas) ya definida
-
-/************** CIERRE DE SESIÓN (Función ya existente) **************/
-// (cerrarSesion) ya definida
-
-/************** VALIDACIÓN AUTOMÁTICA DE ENTRADA/SALIDA (Funciones ya existentes) **************/
-// (verificarEntradaSinSalida) ya definida
-
-/************** FUNCIONES DE GEOBALLAS (Funciones ya existentes) **************/
-// (verificarGeoballa, calcularDistancia, toRad, guardarGeoballa, eliminarGeoballa, obtenerGeoballas) ya definidas
-
-/************** VALIDACIÓN DE HORARIOS Y FRASES MOTIVACIONALES (Funciones ya existentes) **************/
-// (validarHorario, obtenerValidacionHorario, obtenerFraseMotivacional) ya definidas
-
-// Nota: Puedes extender este archivo con funciones de edición manual de registros, por ejemplo:
-
 /**
  * actualizarRegistroManual: Actualiza un registro manual en la hoja "BDregistros"
  * buscando el registro por su ID (almacenado en la columna 10) y actualizando
- * tipo (columna 5), hora (columna 4), observaciones (columna 6), lugar (columna 8) y ubicación (columna 7).
+ * tipo (columna 5), hora (columna 4), observaciones (columna 6), ubicación (columna 7) y lugar (columna 8).
  */
 function actualizarRegistroManual(registroEditado) {
   try {
