@@ -45,9 +45,11 @@
     }
     
     /* ==============================
-       3. Contenedores: Login, Marcación, Panel Admin, Registro Personal, Reporte General
+       3. Contenedores: Login, Marcación, Panel Admin,
+       Registro Personal, Reporte General y Reporte Individual
        ============================== */
-    .login-box, .marcacion-box, .admin-panel, .registro-personal, .reporte-general {
+    .login-box, .marcacion-box, .admin-panel, .registro-personal, 
+    .reporte-general, .reporte-individual {
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
@@ -58,7 +60,7 @@
     .login-box, .marcacion-box {
       max-width: 400px;
     }
-    .admin-panel, .registro-personal, .reporte-general {
+    .admin-panel, .registro-personal, .reporte-general, .reporte-individual {
       max-width: 1100px;
     }
     .logo {
@@ -613,7 +615,31 @@
     }
     
     /* ==============================
-       14. Modal para Añadir Registro
+       14. Nuevo Apartado: Reporte Individual (para Admin)
+       ============================== */
+    .reporte-individual {
+      display: none;
+      padding: 20px;
+    }
+    .reporte-individual .header-reporte h3 {
+      font-size: 20px;
+      color: #333;
+    }
+    .reporte-individual .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .reporte-individual .input-group, 
+    .reporte-individual .date-group {
+      max-width: 200px;
+    }
+    
+    /* ==============================
+       15. Modal para Añadir Registro
        ============================== */
     .modal {
       display: none;
@@ -656,7 +682,7 @@
     }
     
     /* ==============================
-       15. Modal para Editar Registro
+       16. Modal para Editar Registro
        ============================== */
     #modalEditRegistro {
       display: none;
@@ -988,6 +1014,67 @@
     </div>
   </div>
   
+  <!-- NUEVA SECCIÓN: REPORTE INDIVIDUAL -->
+  <div class="reporte-individual hidden" id="reporteIndividualSection">
+    <div class="header-reporte">
+      <h3><i class="fa-solid fa-user"></i> Reporte Individual</h3>
+      <div class="button-group">
+        <button class="btn-gray" onclick="volverAlAdminPanel()">
+          <i class="fa-solid fa-arrow-left"></i> Volver a Admin Panel
+        </button>
+      </div>
+    </div>
+    <div class="filtros">
+      <div class="input-group">
+        <label for="riDNI">DNI:</label>
+        <input type="text" id="riDNI" placeholder="DNI" maxlength="8">
+      </div>
+      <div class="date-group">
+        <label for="riFechaInicio">Fecha Inicio:</label>
+        <input type="date" id="riFechaInicio">
+      </div>
+      <div class="date-group">
+        <label for="riFechaFin">Fecha Fin:</label>
+        <input type="date" id="riFechaFin">
+      </div>
+      <div class="input-group">
+        <label for="riTipo">Tipo:</label>
+        <select id="riTipo">
+          <option value="">Todos</option>
+          <option value="Entrada">Entrada</option>
+          <option value="Salida">Salida</option>
+        </select>
+      </div>
+      <button class="btn-blue" onclick="filtrarReporteIndividual()">
+        <i class="fa-solid fa-filter"></i> Filtrar
+      </button>
+      <button class="btn-blue" onclick="exportarReporteIndividual()">
+        <i class="fa-solid fa-file-export"></i> Exportar CSV
+      </button>
+    </div>
+    <div class="tabla-registros">
+      <table id="tablaReporteIndividual">
+        <thead>
+          <tr>
+            <th>Foto</th>
+            <th>Nombre</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Observaciones</th>
+            <th>Ubicación</th>
+            <th>Lugar</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyReporteIndividual"></tbody>
+      </table>
+    </div>
+    <div class="chart-container" style="margin-top: 20px;">
+      <canvas id="reporteIndividualChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+  
   <!-- Modal para Añadir Registro Manual -->
   <div id="modalAddRegistro" class="modal">
     <div class="modal-content">
@@ -1103,6 +1190,7 @@
   <script>
     /************** INICIALIZACIÓN Y CONFIGURACIÓN **************/
     let geoballasList = [];  // Para almacenar la lista de geoballas y usarlas en los selects
+    let reporteIndividualData = [];  // Almacena los registros del reporte individual
 
     function inicializarPagina() {
       document.getElementById("anio").textContent = new Date().getFullYear();
@@ -1710,6 +1798,7 @@
         document.getElementById("mainContent").style.display = "none";
         document.getElementById("registroPersonal").style.display = "none";
         document.getElementById("reporteGeneralSection").style.display = "none";
+        document.getElementById("reporteIndividualSection").style.display = "none";
         document.getElementById("loginDiv").style.display = "block";
         document.getElementById("loginDiv").className = "login-box visible";
         document.getElementById("usuario").value = "";
@@ -1778,10 +1867,13 @@
       filtrarReporteGeneral();
     }
     function reporteIndividual() {
-      document.getElementById("adminPanel").style.display = "block";
-      document.getElementById("usersSection").style.display = "none";
-      document.getElementById("geoballasSection").style.display = "none";
-      showFancyAlert("Función de Reporte Individual en construcción...");
+      document.getElementById("adminPanel").classList.remove("visible");
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "block";
+      setTimeout(() => {
+        document.getElementById("reporteIndividualSection").classList.add("visible");
+      }, 300);
+      filtrarReporteIndividual();
     }
     
     /************** Funciones para el Reporte General **************/
@@ -1872,13 +1964,149 @@
       });
     }
     
-    function volverAlAdminPanel() {
-      document.getElementById("reporteGeneralSection").classList.remove("visible");
-      setTimeout(() => {
-        document.getElementById("reporteGeneralSection").style.display = "none";
-        document.getElementById("adminPanel").style.display = "block";
-        document.getElementById("adminPanel").classList.add("visible");
-      }, 300);
+    /************** Funciones para el Reporte Individual **************/
+    function filtrarReporteIndividual() {
+      var dni = document.getElementById("riDNI").value;
+      var fechaInicio = document.getElementById("riFechaInicio").value;
+      var fechaFin = document.getElementById("riFechaFin").value;
+      var tipo = document.getElementById("riTipo").value;
+      google.script.run.withSuccessHandler(renderizarReporteIndividual)
+         .obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo);
+    }
+    function renderizarReporteIndividual(registros) {
+      reporteIndividualData = registros; // Guardamos para exportar
+      const tbody = document.getElementById("tbodyReporteIndividual");
+      tbody.innerHTML = "";
+      if (registros.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 9;
+        td.textContent = "No se encontraron registros.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        if(window.reporteIndividualChartInstance) { window.reporteIndividualChartInstance.destroy(); }
+        return;
+      }
+      registros.forEach(reg => {
+        const tr = document.createElement("tr");
+        
+        // Columna Foto
+        const tdFoto = document.createElement("td");
+        if (reg.foto) {
+          const btnFoto = document.createElement("button");
+          btnFoto.classList.add("btn-gray");
+          btnFoto.innerHTML = '<i class="fa-solid fa-image"></i>';
+          btnFoto.onclick = function() { verFoto(reg.foto); };
+          tdFoto.appendChild(btnFoto);
+        } else {
+          tdFoto.textContent = "Sin foto";
+        }
+        tr.appendChild(tdFoto);
+        
+        // Nombre
+        const tdNombre = document.createElement("td");
+        tdNombre.textContent = reg.nombre || "";
+        tr.appendChild(tdNombre);
+        
+        // Fecha
+        const tdFecha = document.createElement("td");
+        tdFecha.textContent = reg.fecha || "";
+        tr.appendChild(tdFecha);
+        
+        // Hora
+        const tdHora = document.createElement("td");
+        tdHora.textContent = reg.hora || "";
+        tr.appendChild(tdHora);
+        
+        // Tipo
+        const tdTipo = document.createElement("td");
+        tdTipo.textContent = reg.tipo || "";
+        tr.appendChild(tdTipo);
+        
+        // Observaciones
+        const tdObs = document.createElement("td");
+        tdObs.textContent = reg.observaciones || "";
+        tr.appendChild(tdObs);
+        
+        // Ubicación
+        const tdUbicacion = document.createElement("td");
+        tdUbicacion.textContent = reg.ubicacion || "";
+        tr.appendChild(tdUbicacion);
+        
+        // Lugar
+        const tdLugar = document.createElement("td");
+        tdLugar.textContent = reg.lugar || "";
+        tr.appendChild(tdLugar);
+        
+        // Acciones
+        const tdAcciones = document.createElement("td");
+        const btnEdit = document.createElement("button");
+        btnEdit.classList.add("btn-orange");
+        btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+        btnEdit.onclick = function() { editarRegistroManual(reg); };
+        const btnDelete = document.createElement("button");
+        btnDelete.classList.add("btn-red");
+        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
+        tdAcciones.appendChild(btnEdit);
+        tdAcciones.appendChild(btnDelete);
+        tr.appendChild(tdAcciones);
+        
+        tbody.appendChild(tr);
+      });
+      crearChartReporteIndividual(registros);
+    }
+    
+    function crearChartReporteIndividual(registros) {
+      let countEntrada = registros.filter(r => r.tipo === "Entrada").length;
+      let countSalida = registros.filter(r => r.tipo === "Salida").length;
+      if(window.reporteIndividualChartInstance) {
+          window.reporteIndividualChartInstance.destroy();
+      }
+      const ctx = document.getElementById("reporteIndividualChart").getContext('2d');
+      window.reporteIndividualChartInstance = new Chart(ctx, {
+         type: 'bar',
+         data: {
+           labels: ['Entrada', 'Salida'],
+           datasets: [{
+             label: '# de Marcaciones',
+             data: [countEntrada, countSalida],
+             backgroundColor: ['rgba(229,57,53,0.6)', 'rgba(0,123,255,0.6)'],
+             borderColor: ['rgba(229,57,53,1)', 'rgba(0,123,255,1)'],
+             borderWidth: 1
+           }]
+         },
+         options: {
+           scales: {
+             y: { beginAtZero: true }
+           }
+         }
+      });
+    }
+    
+    function exportarReporteIndividual() {
+      if (reporteIndividualData.length === 0) {
+        showFancyAlert("No hay datos para exportar.");
+        return;
+      }
+      let csv = "DNI,Nombre,Fecha,Hora,Tipo,Observaciones,Ubicación,Lugar\n";
+      reporteIndividualData.forEach(reg => {
+         csv += [
+           reg.dni || "",
+           reg.nombre || "",
+           reg.fecha || "",
+           reg.hora || "",
+           reg.tipo || "",
+           reg.observaciones ? '"' + reg.observaciones.replace(/"/g,'""') + '"' : "",
+           reg.ubicacion || "",
+           reg.lugar || ""
+         ].join(",") + "\n";
+      });
+      let blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "reporte_individual.csv";
+      link.click();
     }
     
     /************** Funciones para el Modal de Añadir Registro **************/
@@ -1994,7 +2222,7 @@
       google.script.run.withSuccessHandler(function(res){
         showFancyAlert(res.mensaje || "Registro actualizado.");
         cerrarModalEditRegistro();
-        filtrarReporteGeneral(); // refrescar la tabla
+        filtrarReporteGeneral();
       }).actualizarRegistroManual(registroEditado);
     }
     
@@ -2071,6 +2299,8 @@
       });
     }
   </script>
+  <!-- Incluir Chart.js para el gráfico del Reporte Individual -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Incluir el script de Google Maps con tu API key -->
   <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap"></script>
 </body>
