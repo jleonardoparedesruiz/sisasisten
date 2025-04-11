@@ -46,10 +46,10 @@
     
     /* ==============================
        3. Contenedores: Login, Marcación, Panel Admin,
-       Registro Personal, Reporte General y Reporte Individual
+       Registro Personal, Reportes, Faltas
        ============================== */
     .login-box, .marcacion-box, .admin-panel, .registro-personal, 
-    .reporte-general, .reporte-individual {
+    .reporte-general, .reporte-individual, .faltas-section {
       background: #ffffff;
       padding: 20px;
       border-radius: 10px;
@@ -60,7 +60,7 @@
     .login-box, .marcacion-box {
       max-width: 400px;
     }
-    .admin-panel, .registro-personal, .reporte-general, .reporte-individual {
+    .admin-panel, .registro-personal, .reporte-general, .reporte-individual, .faltas-section {
       max-width: 1100px;
     }
     .logo {
@@ -589,11 +589,6 @@
       background-color: #e53935;
       color: #fff;
     }
-    .tabla-registros td .foto-icon {
-      cursor: pointer;
-      color: #e53935;
-      font-size: 18px;
-    }
     
     /* ==============================
        13. Nuevo Apartado: Reporte General (para Admin)
@@ -639,7 +634,39 @@
     }
     
     /* ==============================
-       15. Modal para Añadir Registro
+       15. Nueva Sección: Faltas (para Admin)
+       ============================== */
+    .faltas-section {
+      display: none;
+      padding: 20px;
+    }
+    .faltas-section h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .faltas-section table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .faltas-section th, .faltas-section td {
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    .faltas-section th {
+      background-color: #e53935;
+      color: #fff;
+    }
+    
+    /* ==============================
+       16. Modal para Añadir Registro
        ============================== */
     .modal {
       display: none;
@@ -682,7 +709,7 @@
     }
     
     /* ==============================
-       16. Modal para Editar Registro
+       17. Modal para Editar Registro
        ============================== */
     #modalEditRegistro {
       display: none;
@@ -705,6 +732,33 @@
       text-align: left;
     }
     #modalEditRegistro .modal-content h3 {
+      margin-top: 0;
+    }
+    
+    /* ==============================
+       18. Modal para Editar Falta
+       ============================== */
+    #modalEditFalta {
+      display: none;
+      position: fixed;
+      z-index: 20000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    #modalEditFalta .modal-content {
+      background-color: #fff;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      text-align: left;
+    }
+    #modalEditFalta .modal-content h3 {
       margin-top: 0;
     }
     
@@ -859,6 +913,7 @@
         <a onclick="mostrarEstadisticas()">Estadísticas</a>
         <a onclick="mostrarUsersSection()">Usuarios</a>
         <a onclick="mostrarGeoballas()">Geoballas</a>
+        <a onclick="mostrarFaltas()">Faltas</a>
         <a onclick="cerrarSesion()">
           <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
         </a>
@@ -935,7 +990,6 @@
           </table>
         </div>
       </div>
-      <!-- Fin Sección Usuarios -->
       
       <!-- Sección Geoballas -->
       <div class="geoballas-section" id="geoballasSection">
@@ -964,7 +1018,26 @@
         <div id="map"></div>
         <button class="btn-blue" onclick="guardarGeoballa()">Guardar Geoballa</button>
       </div>
-      <!-- Fin Sección Geoballas -->
+      
+      <!-- Sección Faltas -->
+      <div class="faltas-section hidden" id="faltasSection">
+        <h3><i class="fa-solid fa-exclamation-circle"></i> Faltas Registradas</h3>
+        <div class="tabla-registros">
+          <table id="tablaFaltas">
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Fecha</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyFaltas"></tbody>
+          </table>
+        </div>
+      </div>
+      
     </div>
   </div>
   
@@ -1108,7 +1181,7 @@
         <label for="addLugarSelect">Lugar:</label>
         <select id="addLugarSelect" onchange="onAddLugarChange(this.value)"></select>
       </div>
-      <!-- Ubicacion oculta, se llena según la geoballa elegida -->
+      <!-- Ubicación oculta, se llena según la geoballa elegida -->
       <input type="hidden" id="addUbicacion">
       
       <div class="actions-usuarios">
@@ -1154,6 +1227,27 @@
           <i class="fa-solid fa-xmark"></i> Cancelar
         </button>
         <button class="btn-blue" onclick="enviarActualizacionRegistro()">
+          <i class="fa-solid fa-floppy-disk"></i> Actualizar
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para Editar Falta -->
+  <div id="modalEditFalta" class="modal">
+    <div class="modal-content">
+      <h3>Editar Falta</h3>
+      <!-- Guardamos el ID de la falta en un input hidden -->
+      <input type="hidden" id="editFaltaId">
+      <div class="input-group">
+        <label for="editFaltaObs">Observaciones:</label>
+        <textarea id="editFaltaObs" rows="3" placeholder="Ingrese el motivo de la falta"></textarea>
+      </div>
+      <div class="actions-usuarios">
+        <button class="btn-gray" onclick="cerrarModalEditFalta()">
+          <i class="fa-solid fa-xmark"></i> Cancelar
+        </button>
+        <button class="btn-blue" onclick="enviarActualizacionFalta()">
           <i class="fa-solid fa-floppy-disk"></i> Actualizar
         </button>
       </div>
@@ -1532,18 +1626,37 @@
         document.getElementById("adminPanel").classList.add("visible");
         document.getElementById("usersSection").style.display = "none";
         document.getElementById("geoballasSection").style.display = "none";
+        document.getElementById("reporteGeneralSection").style.display = "none";
+        document.getElementById("reporteIndividualSection").style.display = "none";
+        document.getElementById("faltasSection").style.display = "none";
       }, 300);
+    }
+    function volverAlAdminPanel() {
+      // Esta función oculta todas las secciones de Admin y muestra el panel principal
+      document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "none";
+      document.getElementById("reporteGeneralSection").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "none";
+      document.getElementById("faltasSection").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("adminPanel").classList.add("visible");
     }
     function mostrarUsersSection() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "block";
       document.getElementById("geoballasSection").style.display = "none";
+      document.getElementById("reporteGeneralSection").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "none";
+      document.getElementById("faltasSection").style.display = "none";
       google.script.run.withSuccessHandler(renderizarUsuarios).obtenerListaUsuarios();
     }
     function mostrarGeoballas() {
       document.getElementById("adminPanel").style.display = "block";
       document.getElementById("usersSection").style.display = "none";
       document.getElementById("geoballasSection").style.display = "block";
+      document.getElementById("reporteGeneralSection").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "none";
+      document.getElementById("faltasSection").style.display = "none";
       google.script.run.withSuccessHandler(renderizarGeoballas).obtenerGeoballas();
       if (typeof initMap === "function") {
         initMap();
@@ -1552,6 +1665,15 @@
         google.maps.event.trigger(map, "resize");
         map.setCenter({ lat: -8.109, lng: -79.021 });
       }, 100);
+    }
+    function mostrarFaltas() {
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("usersSection").style.display = "none";
+      document.getElementById("geoballasSection").style.display = "none";
+      document.getElementById("reporteGeneralSection").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "none";
+      document.getElementById("faltasSection").style.display = "block";
+      google.script.run.withSuccessHandler(renderizarFaltas).obtenerFaltas();
     }
     function renderizarUsuarios(lista) {
       const tbody = document.getElementById("tbodyUsuarios");
@@ -1626,7 +1748,6 @@
         tr.appendChild(tdAcciones);
         tbody.appendChild(tr);
       });
-      
       // Cargamos en los <select> (añadir y editar) las geoballas
       cargarGeoballasEnSelect("addLugarSelect");
       cargarGeoballasEnSelect("editLugarSelect");
@@ -1799,6 +1920,7 @@
         document.getElementById("registroPersonal").style.display = "none";
         document.getElementById("reporteGeneralSection").style.display = "none";
         document.getElementById("reporteIndividualSection").style.display = "none";
+        document.getElementById("faltasSection").style.display = "none";
         document.getElementById("loginDiv").style.display = "block";
         document.getElementById("loginDiv").className = "login-box visible";
         document.getElementById("usuario").value = "";
@@ -1845,6 +1967,9 @@
       document.getElementById("adminPanel").classList.add("visible");
       document.getElementById("usersSection").style.display = "none";
       document.getElementById("geoballasSection").style.display = "none";
+      document.getElementById("reporteGeneralSection").style.display = "none";
+      document.getElementById("reporteIndividualSection").style.display = "none";
+      document.getElementById("faltasSection").style.display = "none";
       google.script.run.withSuccessHandler(function(stats) {
         let mensaje = "Estadísticas generales:\n";
         mensaje += "Total Registros: " + stats.totalRegistros + "\n";
@@ -2014,45 +2139,45 @@
         tr.appendChild(tdFecha);
         
         // Hora
-        const tdHora = document.createElement("td");
-        tdHora.textContent = reg.hora || "";
-        tr.appendChild(tdHora);
+       	const tdHora = document.createElement("td");
+       	tdHora.textContent = reg.hora || "";
+       	tr.appendChild(tdHora);
         
         // Tipo
-        const tdTipo = document.createElement("td");
-        tdTipo.textContent = reg.tipo || "";
-        tr.appendChild(tdTipo);
+       	const tdTipo = document.createElement("td");
+       	tdTipo.textContent = reg.tipo || "";
+       	tr.appendChild(tdTipo);
         
         // Observaciones
-        const tdObs = document.createElement("td");
-        tdObs.textContent = reg.observaciones || "";
-        tr.appendChild(tdObs);
+       	const tdObs = document.createElement("td");
+       	tdObs.textContent = reg.observaciones || "";
+       	tr.appendChild(tdObs);
         
         // Ubicación
-        const tdUbicacion = document.createElement("td");
-        tdUbicacion.textContent = reg.ubicacion || "";
-        tr.appendChild(tdUbicacion);
+       	const tdUbicacion = document.createElement("td");
+       	tdUbicacion.textContent = reg.ubicacion || "";
+       	tr.appendChild(tdUbicacion);
         
         // Lugar
-        const tdLugar = document.createElement("td");
-        tdLugar.textContent = reg.lugar || "";
-        tr.appendChild(tdLugar);
+       	const tdLugar = document.createElement("td");
+       	tdLugar.textContent = reg.lugar || "";
+       	tr.appendChild(tdLugar);
         
         // Acciones
-        const tdAcciones = document.createElement("td");
-        const btnEdit = document.createElement("button");
-        btnEdit.classList.add("btn-orange");
-        btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-        btnEdit.onclick = function() { editarRegistroManual(reg); };
-        const btnDelete = document.createElement("button");
-        btnDelete.classList.add("btn-red");
-        btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
-        btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
-        tdAcciones.appendChild(btnEdit);
-        tdAcciones.appendChild(btnDelete);
-        tr.appendChild(tdAcciones);
+       	const tdAcciones = document.createElement("td");
+       	const btnEdit = document.createElement("button");
+       	btnEdit.classList.add("btn-orange");
+       	btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+       	btnEdit.onclick = function() { editarRegistroManual(reg); };
+       	const btnDelete = document.createElement("button");
+       	btnDelete.classList.add("btn-red");
+       	btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
+       	btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
+       	tdAcciones.appendChild(btnEdit);
+       	tdAcciones.appendChild(btnDelete);
+       	tr.appendChild(tdAcciones);
         
-        tbody.appendChild(tr);
+       	tbody.appendChild(tr);
       });
       crearChartReporteIndividual(registros);
     }
@@ -2209,7 +2334,7 @@
         showFancyAlert("No se encontró el ID del registro a editar.");
         return;
       }
-      // Contruir objeto para actualizar
+      // Construir objeto para actualizar
       const registroEditado = {
         id: regId,
         tipo: tipo,
@@ -2218,7 +2343,6 @@
         lugar: lugar,
         ubicacion: ubicacion
       };
-      // Llamar a la función en el servidor (app.gs) => actualizarRegistroManual(registroEditado)
       google.script.run.withSuccessHandler(function(res){
         showFancyAlert(res.mensaje || "Registro actualizado.");
         cerrarModalEditRegistro();
@@ -2237,6 +2361,29 @@
         },
         function() { console.log("Eliminación cancelada"); }
       );
+    }
+    
+    /************** Funciones para Editar Falta (Modal) **************/
+    function editarFalta(falta) {
+      document.getElementById("editFaltaId").value = falta.id; // Se asume que la función obtenerFaltas retorna un id
+      document.getElementById("editFaltaObs").value = falta.observaciones || "";
+      document.getElementById("modalEditFalta").style.display = "block";
+    }
+    function cerrarModalEditFalta() {
+      document.getElementById("modalEditFalta").style.display = "none";
+    }
+    function enviarActualizacionFalta() {
+      const faltaId = document.getElementById("editFaltaId").value;
+      const obs = document.getElementById("editFaltaObs").value.trim();
+      if (!faltaId) {
+        showFancyAlert("No se encontró el ID de la falta.");
+        return;
+      }
+      google.script.run.withSuccessHandler(function(res) {
+        showFancyAlert(res.mensaje || "Falta actualizada.");
+        cerrarModalEditFalta();
+        mostrarFaltas();
+      }).actualizarFalta(faltaId, obs);
     }
     
     /************** Funciones para el mapa de Geoballas **************/
@@ -2305,4 +2452,5 @@
   <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4YhQYvvHu7g53Xf53jDHGleUJYVAt1cA&callback=initMap"></script>
 </body>
 </html>
+
 
