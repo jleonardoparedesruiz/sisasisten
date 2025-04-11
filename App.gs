@@ -801,9 +801,6 @@ function obtenerFraseMotivacional(tipoFrase) {
 }
 
 /************** FUNCIONES NUEVAS PARA REGISTRO MANUAL **************/
-/**
- * obtenerNombrePorDNI: Busca en la hoja "Usuarios" y retorna el nombre asociado al DNI.
- */
 function obtenerNombrePorDNI(dni) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -821,10 +818,6 @@ function obtenerNombrePorDNI(dni) {
   }
 }
 
-/**
- * guardarRegistroManual: Guarda un registro manual en la hoja "BDregistros".
- * Se agrega un UUID en una nueva columna (posición 10) para identificar el registro.
- */
 function guardarRegistroManual(registro) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -851,10 +844,6 @@ function guardarRegistroManual(registro) {
   }
 }
 
-/**
- * eliminarRegistroManual: Elimina un registro manual de la hoja "BDregistros"
- * buscando el ID en la columna 10.
- */
 function eliminarRegistroManual(regId) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -873,11 +862,6 @@ function eliminarRegistroManual(regId) {
   }
 }
 
-/**
- * actualizarRegistroManual: Actualiza un registro manual en la hoja "BDregistros"
- * buscando el registro por su ID (almacenado en la columna 10) y actualizando
- * tipo (columna 5), hora (columna 4), observaciones (columna 6), ubicación (columna 7) y lugar (columna 8).
- */
 function actualizarRegistroManual(registroEditado) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -886,7 +870,6 @@ function actualizarRegistroManual(registroEditado) {
     var timeZone = ss.getSpreadsheetTimeZone();
     for (var i = 1; i < data.length; i++) {
       if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === registroEditado.id) {
-        // Actualizamos: hora (col 4), tipo (col 5), observaciones (col 6), ubicación (col 7), lugar (col 8)
         hoja.getRange(i+1, 4).setValue(registroEditado.hora);
         hoja.getRange(i+1, 5).setValue(registroEditado.tipo);
         hoja.getRange(i+1, 6).setValue(registroEditado.observaciones);
@@ -901,3 +884,97 @@ function actualizarRegistroManual(registroEditado) {
     return { mensaje: "Error al actualizar el registro: " + error };
   }
 }
+
+/************** NUEVAS FUNCIONES PARA REGISTRO DE FALTAS **************/
+function registrarFaltasAutomaticas() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hojaUsuarios = ss.getSheetByName("Usuarios");
+    var hojaRegistros = ss.getSheetByName("BDregistros");
+    var hojaFaltas = ss.getSheetByName("Faltas");
+    var usuarios = hojaUsuarios.getDataRange().getValues();
+    var registros = hojaRegistros.getDataRange().getValues();
+    var timeZone = ss.getSpreadsheetTimeZone();
+    var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
+
+    // Crear objeto para saber quién registró entrada hoy
+    var marcadosHoy = {};
+    for (var i = 1; i < registros.length; i++) {
+      var dni = registros[i][0].toString().trim();
+      var valorFecha = registros[i][2];
+      var fechaRegistro = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
+      var tipo = registros[i][4].toString().trim();
+      if (fechaRegistro === fechaHoy && tipo === "Entrada") {
+        marcadosHoy[dni] = true;
+      }
+    }
+
+    // Recorrer Usuarios y registrar faltas para quienes no marcaron entrada
+    for (var i = 1; i < usuarios.length; i++) {
+      var dniUsuario = usuarios[i][0].toString().trim();
+      var nombreUsuario = usuarios[i][1] ? usuarios[i][1].toString().trim() : "";
+      if (!marcadosHoy[dniUsuario]) {
+        var datosFaltas = hojaFaltas.getDataRange().getValues();
+        var existeFalta = false;
+        for (var j = 1; j < datosFaltas.length; j++) {
+          var dniFalta = datosFaltas[j][0].toString().trim();
+          var fechaFalta = datosFaltas[j][2].toString().trim();
+          if (dniUsuario === dniFalta && fechaFalta === fechaHoy) {
+            existeFalta = true;
+            break;
+          }
+        }
+        if (!existeFalta) {
+          hojaFaltas.appendRow([dniUsuario, nombreUsuario, fechaHoy, ""]);
+        }
+      }
+    }
+    return { mensaje: "Faltas automáticas registradas para " + fechaHoy };
+  } catch (error) {
+    Logger.log("Error en registrarFaltasAutomaticas: " + error);
+    return { mensaje: "Error al registrar faltas: " + error };
+  }
+}
+
+function obtenerFaltas() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Faltas");
+    var data = hoja.getDataRange().getValues();
+    var faltas = [];
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        faltas.push({
+          dni: data[i][0],
+          nombre: data[i][1],
+          fecha: data[i][2],
+          observaciones: data[i][3] || "",
+          id: i // Se utiliza el número de fila (ajústalo si es necesario)
+        });
+      }
+    }
+    return faltas;
+  } catch (error) {
+    Logger.log("Error en obtenerFaltas: " + error);
+    return [];
+  }
+}
+
+function actualizarFalta(faltaId, observaciones) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Faltas");
+    var row = parseInt(faltaId) + 1;
+    hoja.getRange(row, 4).setValue(observaciones);
+    return { mensaje: "Falta actualizada correctamente." };
+  } catch (error) {
+    Logger.log("Error en actualizarFalta: " + error);
+    return { mensaje: "Error al actualizar la falta: " + error };
+  }
+}
+
+/************** FUNCIONES NUEVAS PARA REGISTRO MANUAL **************/
+// (Las funciones obtenerNombrePorDNI, guardarRegistroManual, eliminarRegistroManual y actualizarRegistroManual ya se incluyeron arriba)
+
