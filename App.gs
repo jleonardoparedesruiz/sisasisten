@@ -13,7 +13,7 @@ function validarSesionActiva() {
     return !!usuario;
   } catch (error) {
     Logger.log("Error en validarSesionActiva: " + error);
-    return false;
+    return { error: true, mensaje: "Error en validarSesionActiva: " + error.message };
   }
 }
 
@@ -35,7 +35,7 @@ function validarLogin(usuario, contrasena) {
     return false;
   } catch (error) {
     Logger.log("Error en validarLogin: " + error);
-    return false;
+    return { error: true, mensaje: "Error en validarLogin: " + error.message };
   }
 }
 
@@ -55,7 +55,7 @@ function obtenerNombreUsuario() {
     return "Usuario";
   } catch (error) {
     Logger.log("Error en obtenerNombreUsuario: " + error);
-    return "Usuario";
+    return { error: true, mensaje: "Error en obtenerNombreUsuario: " + error.message };
   }
 }
 
@@ -75,7 +75,7 @@ function obtenerNivelUsuario() {
     return 0;
   } catch (error) {
     Logger.log("Error en obtenerNivelUsuario: " + error);
-    return 0;
+    return { error: true, mensaje: "Error en obtenerNivelUsuario: " + error.message };
   }
 }
 
@@ -91,17 +91,19 @@ function obtenerMarcacionesHoy() {
     var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
     var resultados = [];
     var userTrimmed = usuario.trim();
+    
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       var valorFecha = datos[i][2];
       var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
-          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-          : valorFecha.toString().trim();
+            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+            : valorFecha.toString().trim();
       var valorHora = datos[i][3];
       var horaFila = (valorHora instanceof Date && !isNaN(valorHora))
-          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
-          : valorHora.toString().trim();
+            ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+            : valorHora.toString().trim();
       var tipo = datos[i][4].toString().trim();
+
       if (dniFila === userTrimmed && fechaFila === fechaHoy) {
         resultados.push({ tipo: tipo, fecha: fechaFila, hora: horaFila });
       }
@@ -109,15 +111,10 @@ function obtenerMarcacionesHoy() {
     return resultados;
   } catch (error) {
     Logger.log("Error en obtenerMarcacionesHoy: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerMarcacionesHoy: " + error.message };
   }
 }
 
-/**
- * obtenerRegistrosUsuario: Retorna un arreglo de objetos con todos los registros
- * del usuario logueado (filtrados por fecha si se proveen fechaInicio y fechaFin).
- * Se incluyen: fecha, hora, tipo, nombre, observaciones, ubicación, lugar, linkImagen y id (si existe).
- */
 function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
   try {
     var usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
@@ -128,14 +125,15 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
     var timeZone = ss.getSpreadsheetTimeZone();
     var userTrimmed = usuario.trim();
     var resultado = [];
+    
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
       if (fila[0].toString().trim() !== userTrimmed) continue;
       
       var valorFecha = fila[2];
       var fechaStr = (valorFecha instanceof Date && !isNaN(valorFecha))
-          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-          : valorFecha.toString().trim();
+            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+            : valorFecha.toString().trim();
       
       if (fechaInicio && fechaFin) {
         if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
@@ -143,8 +141,8 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
       
       var valorHora = fila[3];
       var horaStr = (valorHora instanceof Date && !isNaN(valorHora))
-          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
-          : valorHora.toString().trim();
+            ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+            : valorHora.toString().trim();
       
       var tipo = fila[4] ? fila[4].toString().trim() : "";
       var nombre = fila[1] ? fila[1].toString() : "";
@@ -174,14 +172,10 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
     return resultado;
   } catch (error) {
     Logger.log("Error en obtenerRegistrosUsuario: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerRegistrosUsuario: " + error.message };
   }
 }
 
-/**
- * Obtener Reporte Individual: Devuelve un arreglo de objetos filtrado según DNI (si se especifica),
- * rango de fechas y tipo de marcación. Esta función es para la consulta individual en el panel de admin.
- */
 function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -189,29 +183,27 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
     var datos = hoja.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
     var resultado = [];
+
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
       // Filtrar por DNI si se especifica
       var dniFila = fila[0].toString().trim();
       if (dni && dni.trim() !== "" && dniFila !== dni.trim()) continue;
       
-      // Procesar fecha
       var valorFecha = fila[2];
       var fechaStr = (valorFecha instanceof Date && !isNaN(valorFecha))
-          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-          : valorFecha.toString().trim();
+            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+            : valorFecha.toString().trim();
       
       if (fechaInicio && fechaFin) {
         if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
       }
       
-      // Procesar hora
       var valorHora = fila[3];
       var horaStr = (valorHora instanceof Date && !isNaN(valorHora))
-          ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
-          : valorHora.toString().trim();
+            ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
+            : valorHora.toString().trim();
       
-      // Filtrar por tipo si se especifica (Entrada, Salida u otro)
       var tipoFila = fila[4] ? fila[4].toString().trim() : "";
       if (tipo && tipo.trim() !== "" && tipoFila !== tipo.trim()) continue;
       
@@ -243,29 +235,34 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
     return resultado;
   } catch (error) {
     Logger.log("Error en obtenerReporteIndividual: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerReporteIndividual: " + error.message };
   }
 }
 
-/**
- * subirYRegistrarAsistencia: Sube la imagen, verifica la geolocalización (geoballa) y registra la asistencia.
- * Evita registros duplicados para el mismo tipo en el mismo día (para usuarios sin horas extras).
- */
+/************** SUBIR Y REGISTRAR ASISTENCIA **************/
 function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
   try {
     const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
-    if (!usuario) return { mensaje: "Usuario no autenticado." };
+    if (!usuario) {
+      return { mensaje: "Usuario no autenticado." };
+    }
 
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
 
     const validacion = obtenerValidacionHorario(tipoEvento);
-    if (!validacion.permitido || validacion.permitido === false) return { mensaje: validacion.mensaje };
+    if (!validacion.permitido || validacion.permitido === false) {
+      return { mensaje: validacion.mensaje };
+    }
 
     const lugar = verificarGeoballa(ubicacion);
-    if (!lugar || !lugar.dentro) {
-      return { mensaje: `Estás a ${Math.round(lugar.distancia)} metros de "${lugar.lugar}".\nRadio permitido: ${lugar.radio} m.\nNo puedes marcar asistencia.` };
+    if (!lugar) {
+      return { mensaje: "No se encontró ninguna zona geográfica autorizada para marcar." };
+    } else if (!lugar.dentro) {
+      return { 
+        mensaje: `Estás a ${Math.round(lugar.distancia)} metros de "${lugar.lugar}".\nRadio permitido: ${lugar.radio} m.\nNo puedes marcar asistencia.` 
+      };
     }
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -297,8 +294,9 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         let tipoFila = fila[4].toString().trim();
         let valorFecha = fila[2];
         let fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
-            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-            : valorFecha.toString().trim();
+              ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+              : valorFecha.toString().trim();
+
         if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
           return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
         }
@@ -307,7 +305,11 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
 
     // Subir la imagen y hacerla pública
     var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
-    var blob = Utilities.newBlob(Utilities.base64Decode(imagenBase64), MimeType.JPEG, `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`);
+    var blob = Utilities.newBlob(
+      Utilities.base64Decode(imagenBase64),
+      MimeType.JPEG,
+      `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`
+    );
     var archivo = carpeta.createFile(blob);
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var linkImagen = archivo.getUrl();
@@ -338,9 +340,10 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       let entradaDate = new Date(fechaHoy + " " + horaEntrada);
       let salidaDate = new Date(fechaHoy + " " + horaAhora);
       let horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
+
       let hojaHorarios = ss.getSheetByName("Horarios");
       let horarios = hojaHorarios.getDataRange().getValues();
-      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Viernes", "Sabado", "Domingo"];
+      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
       let diaSemana = dias[now.getDay()];
       let horaSalidaProgramada = null;
       for (let i = 1; i < horarios.length; i++) {
@@ -403,7 +406,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     };
   } catch (error) {
     Logger.log("Error en subirYRegistrarAsistencia: " + error);
-    return { mensaje: "Error al registrar asistencia: " + error };
+    return { error: true, mensaje: "Error al registrar asistencia: " + error.message };
   }
 }
 
@@ -415,6 +418,7 @@ function guardarUsuarioEnHoja(userObj) {
     var datos = hojaUsuarios.getDataRange().getValues();
     var userTrimmed = userObj.dni.toString().trim();
     var filaEncontrada = -1;
+
     for (var i = 1; i < datos.length; i++) {
       if (datos[i][0].toString().trim() === userTrimmed) {
         filaEncontrada = i;
@@ -448,7 +452,7 @@ function guardarUsuarioEnHoja(userObj) {
     }
   } catch (error) {
     Logger.log("Error en guardarUsuarioEnHoja: " + error);
-    throw error;
+    return { error: true, mensaje: "Error en guardarUsuarioEnHoja: " + error.message };
   }
 }
 
@@ -458,6 +462,7 @@ function obtenerListaUsuarios() {
     var hoja = ss.getSheetByName("Usuarios");
     var datos = hoja.getDataRange().getValues();
     var lista = [];
+
     for (var i = 1; i < datos.length; i++) {
       var row = datos[i];
       if (row[0]) {
@@ -476,7 +481,7 @@ function obtenerListaUsuarios() {
     return lista;
   } catch (error) {
     Logger.log("Error en obtenerListaUsuarios: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerListaUsuarios: " + error.message };
   }
 }
 
@@ -486,6 +491,7 @@ function eliminarUsuario(dni) {
     var hoja = ss.getSheetByName("Usuarios");
     var datos = hoja.getDataRange().getValues();
     var dniTrimmed = dni.toString().trim();
+
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       if (dniFila === dniTrimmed) {
@@ -496,7 +502,7 @@ function eliminarUsuario(dni) {
     return false;
   } catch (error) {
     Logger.log("Error en eliminarUsuario: " + error);
-    return false;
+    return { error: true, mensaje: "Error en eliminarUsuario: " + error.message };
   }
 }
 
@@ -508,6 +514,7 @@ function obtenerEstadisticas() {
     var datos = hojaRegistros.getDataRange().getValues();
     var totalRegistros = 0, totalEntradas = 0, totalSalidas = 0;
     var registrosPorUsuario = {};
+
     for (var i = 1; i < datos.length; i++) {
       if (!datos[i][0]) continue;
       totalRegistros++;
@@ -525,7 +532,14 @@ function obtenerEstadisticas() {
     };
   } catch (error) {
     Logger.log("Error en obtenerEstadisticas: " + error);
-    return { totalRegistros: 0, totalEntradas: 0, totalSalidas: 0, registrosPorUsuario: {} };
+    return { 
+      error: true,
+      mensaje: "Error en obtenerEstadisticas: " + error.message,
+      totalRegistros: 0,
+      totalEntradas: 0,
+      totalSalidas: 0,
+      registrosPorUsuario: {}
+    };
   }
 }
 
@@ -536,7 +550,7 @@ function cerrarSesion() {
     return true;
   } catch (error) {
     Logger.log("Error en cerrarSesion: " + error);
-    return false;
+    return { error: true, mensaje: "Error en cerrarSesion: " + error.message };
   }
 }
 
@@ -551,13 +565,15 @@ function verificarEntradaSinSalida() {
     var timeZone = ss.getSpreadsheetTimeZone();
     var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
     var entradaEncontrada = false;
+
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       if (dniFila !== usuario.trim()) continue;
       var valorFecha = datos[i][2];
       var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
-          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-          : valorFecha.toString().trim();
+            ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+            : valorFecha.toString().trim();
+
       if (fechaFila !== fechaHoy) continue;
       var tipoFila = datos[i][4].toString().trim();
       if (tipoFila === "Entrada") {
@@ -569,7 +585,7 @@ function verificarEntradaSinSalida() {
     return entradaEncontrada;
   } catch (error) {
     Logger.log("Error en verificarEntradaSinSalida: " + error);
-    return false;
+    return { error: true, mensaje: "Error en verificarEntradaSinSalida: " + error.message };
   }
 }
 
@@ -581,12 +597,15 @@ function verificarGeoballa(ubicacion) {
     var latUser = parseFloat(parts[0].trim());
     var lngUser = parseFloat(parts[1].trim());
     if (isNaN(latUser) || isNaN(lngUser)) return null;
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
+
     var data = geoSheet.getDataRange().getValues();
     var geoballaMasCercana = null;
     var distanciaMinima = Infinity;
+
     for (var i = 1; i < data.length; i++) {
       var lugar = data[i][0];
       var ubicacionGeo = data[i][1];
@@ -598,6 +617,7 @@ function verificarGeoballa(ubicacion) {
       if (isNaN(latGeo) || isNaN(lngGeo)) continue;
       var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
       Logger.log("🛰️ Revisando " + lugar + " - Distancia: " + distancia + " m | Radio: " + radio + " m");
+
       if (distancia <= radio) {
         return {
           lugar: lugar,
@@ -633,7 +653,6 @@ function calcularDistancia(lat1, lng1, lat2, lng2) {
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
-
 function toRad(value) {
   return value * Math.PI / 180;
 }
@@ -663,7 +682,7 @@ function guardarGeoballa(geoObj) {
     return { mensaje: "Geoballa guardada correctamente." };
   } catch (error) {
     Logger.log("Error en guardarGeoballa: " + error);
-    return { mensaje: "Error al guardar geoballa." };
+    return { error: true, mensaje: "Error en guardarGeoballa: " + error.message };
   }
 }
 
@@ -673,6 +692,7 @@ function eliminarGeoballa(lugar) {
     var hoja = ss.getSheetByName("geoballa");
     var data = hoja.getDataRange().getValues();
     var lugarTrimmed = lugar.toString().trim();
+
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] && data[i][0].toString().trim() === lugarTrimmed) {
         hoja.deleteRow(i + 1);
@@ -682,7 +702,7 @@ function eliminarGeoballa(lugar) {
     return { mensaje: "No se encontró la geoballa para el lugar especificado." };
   } catch (error) {
     Logger.log("Error en eliminarGeoballa: " + error);
-    return { mensaje: "Error al eliminar geoballa." };
+    return { error: true, mensaje: "Error en eliminarGeoballa: " + error.message };
   }
 }
 
@@ -692,6 +712,7 @@ function obtenerGeoballas() {
     var hoja = ss.getSheetByName("geoballa");
     var data = hoja.getDataRange().getValues();
     var geoballas = [];
+
     for (var i = 1; i < data.length; i++) {
       if (data[i][0]) {
         geoballas.push({
@@ -704,18 +725,20 @@ function obtenerGeoballas() {
     return geoballas;
   } catch (error) {
     Logger.log("Error en obtenerGeoballas: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerGeoballas: " + error.message, geoballas: [] };
   }
 }
 
 function validarHorario(tipoEvento) {
   try {
     const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
-    if (!usuario) return { permitido: false, mensaje: "Usuario no autenticado." };
+    if (!usuario) {
+      return { permitido: false, mensaje: "Usuario no autenticado." };
+    }
     return obtenerValidacionHorario(tipoEvento);
   } catch (e) {
     Logger.log("Error en validarHorario: " + e);
-    return { permitido: false, mensaje: "Error al validar horario: " + e };
+    return { permitido: false, mensaje: "Error al validar horario: " + e.message };
   }
 }
 
@@ -729,6 +752,7 @@ function obtenerValidacionHorario(tipoEvento) {
   const diaSemana = dias[now.getDay()];
   let horaPermitida = null;
   let toleranciaMin = 0;
+
   for (let i = 1; i < horarios.length; i++) {
     if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
       if (tipoEvento === "Entrada") {
@@ -748,8 +772,9 @@ function obtenerValidacionHorario(tipoEvento) {
   }
   const horaActual = now.getHours() + now.getMinutes() / 60;
   const [h, m] = horaPermitida.toString().split(":");
-  const horaEsperada = parseInt(h) + (parseInt(m) || 0) / 60;
+  const horaEsperada = parseInt(h) + ((parseInt(m) || 0) / 60);
   const horaLimite = horaEsperada + (toleranciaMin / 60);
+
   if (tipoEvento === "Entrada") {
     const margenAnticipado = 15 / 60;
     const horaMinima = horaEsperada - margenAnticipado;
@@ -787,10 +812,12 @@ function obtenerFraseMotivacional(tipoFrase) {
     const idxFrase = encabezado.indexOf("Frase");
     const idxTipo = encabezado.indexOf("Tipo");
     if (idxFrase === -1 || idxTipo === -1) return "¡Buen trabajo!";
+
     const frasesFiltradas = datos.slice(1).filter(fila =>
       fila[idxFrase] && fila[idxTipo] &&
       fila[idxTipo].toString().toLowerCase() === tipoFrase.toLowerCase()
     ).map(fila => fila[idxFrase]);
+
     if (frasesFiltradas.length === 0) return "¡Buen trabajo!";
     const index = Math.floor(Math.random() * frasesFiltradas.length);
     return frasesFiltradas[index];
@@ -814,7 +841,7 @@ function obtenerNombrePorDNI(dni) {
     return "";
   } catch (error) {
     Logger.log("Error en obtenerNombrePorDNI: " + error);
-    return "";
+    return { error: true, mensaje: "Error en obtenerNombrePorDNI: " + error.message };
   }
 }
 
@@ -825,6 +852,7 @@ function guardarRegistroManual(registro) {
     var timeZone = ss.getSpreadsheetTimeZone();
     var fecha = registro.fecha || Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
     var regId = Utilities.getUuid();
+
     hoja.appendRow([
       registro.dni,
       registro.nombre,
@@ -840,7 +868,7 @@ function guardarRegistroManual(registro) {
     return { mensaje: "Registro manual guardado correctamente." };
   } catch (error) {
     Logger.log("Error en guardarRegistroManual: " + error);
-    return { mensaje: "Error al guardar registro manual: " + error };
+    return { error: true, mensaje: "Error al guardar registro manual: " + error.message };
   }
 }
 
@@ -849,6 +877,7 @@ function eliminarRegistroManual(regId) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName("BDregistros");
     var data = hoja.getDataRange().getValues();
+
     for (var i = 1; i < data.length; i++) {
       if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === regId) {
         hoja.deleteRow(i + 1);
@@ -858,7 +887,7 @@ function eliminarRegistroManual(regId) {
     return { mensaje: "Registro no encontrado." };
   } catch (error) {
     Logger.log("Error en eliminarRegistroManual: " + error);
-    return { mensaje: "Error al eliminar el registro: " + error };
+    return { error: true, mensaje: "Error al eliminar el registro: " + error.message };
   }
 }
 
@@ -868,24 +897,25 @@ function actualizarRegistroManual(registroEditado) {
     var hoja = ss.getSheetByName("BDregistros");
     var data = hoja.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
+
     for (var i = 1; i < data.length; i++) {
       if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === registroEditado.id) {
-        hoja.getRange(i+1, 4).setValue(registroEditado.hora);
-        hoja.getRange(i+1, 5).setValue(registroEditado.tipo);
-        hoja.getRange(i+1, 6).setValue(registroEditado.observaciones);
-        hoja.getRange(i+1, 7).setValue(registroEditado.ubicacion);
-        hoja.getRange(i+1, 8).setValue(registroEditado.lugar);
+        hoja.getRange(i + 1, 4).setValue(registroEditado.hora);
+        hoja.getRange(i + 1, 5).setValue(registroEditado.tipo);
+        hoja.getRange(i + 1, 6).setValue(registroEditado.observaciones);
+        hoja.getRange(i + 1, 7).setValue(registroEditado.ubicacion);
+        hoja.getRange(i + 1, 8).setValue(registroEditado.lugar);
         return { mensaje: "Registro actualizado con éxito." };
       }
     }
     return { mensaje: "Registro no encontrado." };
   } catch (error) {
     Logger.log("Error en actualizarRegistroManual: " + error);
-    return { mensaje: "Error al actualizar el registro: " + error };
+    return { error: true, mensaje: "Error al actualizar el registro: " + error.message };
   }
 }
 
-/************** NUEVAS FUNCIONES PARA REGISTRO DE FALTAS **************/
+/************** REGISTRO DE FALTAS **************/
 function registrarFaltasAutomaticas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -897,7 +927,7 @@ function registrarFaltasAutomaticas() {
     var timeZone = ss.getSpreadsheetTimeZone();
     var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
 
-    // Crear objeto para saber quién registró entrada hoy
+    // Objeto para saber quién registró entrada hoy
     var marcadosHoy = {};
     for (var i = 1; i < registros.length; i++) {
       var dni = registros[i][0].toString().trim();
@@ -906,6 +936,7 @@ function registrarFaltasAutomaticas() {
           ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
           : valorFecha.toString().trim();
       var tipo = registros[i][4].toString().trim();
+
       if (fechaRegistro === fechaHoy && tipo === "Entrada") {
         marcadosHoy[dni] = true;
       }
@@ -915,6 +946,7 @@ function registrarFaltasAutomaticas() {
     for (var i = 1; i < usuarios.length; i++) {
       var dniUsuario = usuarios[i][0].toString().trim();
       var nombreUsuario = usuarios[i][1] ? usuarios[i][1].toString().trim() : "";
+
       if (!marcadosHoy[dniUsuario]) {
         var datosFaltas = hojaFaltas.getDataRange().getValues();
         var existeFalta = false;
@@ -934,7 +966,7 @@ function registrarFaltasAutomaticas() {
     return { mensaje: "Faltas automáticas registradas para " + fechaHoy };
   } catch (error) {
     Logger.log("Error en registrarFaltasAutomaticas: " + error);
-    return { mensaje: "Error al registrar faltas: " + error };
+    return { error: true, mensaje: "Error al registrar faltas: " + error.message };
   }
 }
 
@@ -944,6 +976,7 @@ function obtenerFaltas() {
     var hoja = ss.getSheetByName("Faltas");
     var data = hoja.getDataRange().getValues();
     var faltas = [];
+
     for (var i = 1; i < data.length; i++) {
       if (data[i][0]) {
         faltas.push({
@@ -951,14 +984,14 @@ function obtenerFaltas() {
           nombre: data[i][1],
           fecha: data[i][2],
           observaciones: data[i][3] || "",
-          id: i // Se utiliza el número de fila (ajústalo si es necesario)
+          id: i
         });
       }
     }
     return faltas;
   } catch (error) {
     Logger.log("Error en obtenerFaltas: " + error);
-    return [];
+    return { error: true, mensaje: "Error en obtenerFaltas: " + error.message, faltas: [] };
   }
 }
 
@@ -971,10 +1004,78 @@ function actualizarFalta(faltaId, observaciones) {
     return { mensaje: "Falta actualizada correctamente." };
   } catch (error) {
     Logger.log("Error en actualizarFalta: " + error);
-    return { mensaje: "Error al actualizar la falta: " + error };
+    return { error: true, mensaje: "Error al actualizar la falta: " + error.message };
   }
 }
 
-/************** FUNCIONES NUEVAS PARA REGISTRO MANUAL **************/
-// (Las funciones obtenerNombrePorDNI, guardarRegistroManual, eliminarRegistroManual y actualizarRegistroManual ya se incluyeron arriba)
+// NUEVA FUNCIÓN: OBTENER FALTAS POR USUARIO
+function obtenerFaltasPorUsuario(dni) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Faltas");
+    var data = hoja.getDataRange().getValues();
+    var faltas = [];
 
+    var usuarioDNI = dni || PropertiesService.getUserProperties().getProperty("usuarioActivo");
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === usuarioDNI.toString().trim()) {
+        faltas.push({
+          dni: data[i][0],
+          nombre: data[i][1],
+          fecha: data[i][2],
+          observaciones: data[i][3] || "",
+          id: i
+        });
+      }
+    }
+    return faltas;
+  } catch (error) {
+    Logger.log("Error en obtenerFaltasPorUsuario: " + error);
+    return { error: true, mensaje: "Error en obtenerFaltasPorUsuario: " + error.message };
+  }
+}
+
+/**
+ * Función de prueba para ver en Logs las faltas del usuario activo.
+ */
+function probarFaltas() {
+  var faltas = obtenerFaltasPorUsuario();
+  Logger.log(JSON.stringify(faltas, null, 2));
+}
+
+/************** NUEVA FUNCIÓN PARA FILTRAR FALTAS POR FECHAS (Panel Admin) **************/
+function obtenerFaltasPorFechas(fechaInicio, fechaFin) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var hoja = ss.getSheetByName("Faltas");
+    var datos = hoja.getDataRange().getValues();
+    var faltas = [];
+    var timeZone = ss.getSpreadsheetTimeZone();
+    for (var i = 1; i < datos.length; i++) {
+      var fecha = datos[i][2];
+      var fechaStr;
+      if (fecha instanceof Date && !isNaN(fecha)) {
+        fechaStr = Utilities.formatDate(fecha, timeZone, "yyyy-MM-dd");
+      } else {
+        fechaStr = fecha.toString().trim();
+      }
+      // Filtrar por fechas si se han especificado ambas
+      if (fechaInicio && fechaFin) {
+        if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
+      }
+      if (datos[i][0]) {
+        faltas.push({
+          dni: datos[i][0],
+          nombre: datos[i][1],
+          fecha: fechaStr,
+          observaciones: datos[i][3] || "",
+          id: i
+        });
+      }
+    }
+    return faltas;
+  } catch (error) {
+    Logger.log("Error en obtenerFaltasPorFechas: " + error);
+    return { error: true, mensaje: "Error en obtenerFaltasPorFechas: " + error.message, faltas: [] };
+  }
+}
