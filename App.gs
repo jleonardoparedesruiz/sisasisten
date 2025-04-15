@@ -186,7 +186,7 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
 
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
-      // Filtrar por DNI si se especifica
+      // Filtrar por DNI si se especifica (para admin, pasamos "" o null)
       var dniFila = fila[0].toString().trim();
       if (dni && dni.trim() !== "" && dniFila !== dni.trim()) continue;
       
@@ -314,7 +314,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var linkImagen = archivo.getUrl();
 
-    // Registrar asistencia
+    // Registrar asistencia en BDregistros
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -916,12 +916,12 @@ function actualizarRegistroManual(registroEditado) {
 }
 
 /************** REGISTRO DE FALTAS **************/
+// Actualizamos la función para que registre las faltas en BDregistros
 function registrarFaltasAutomaticas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaUsuarios = ss.getSheetByName("Usuarios");
-    var hojaRegistros = ss.getSheetByName("BDregistros");
-    var hojaFaltas = ss.getSheetByName("Faltas");
+    var hojaRegistros = ss.getSheetByName("BDregistros"); // Usamos BDregistros para guardar las faltas
     var usuarios = hojaUsuarios.getDataRange().getValues();
     var registros = hojaRegistros.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
@@ -942,24 +942,38 @@ function registrarFaltasAutomaticas() {
       }
     }
 
-    // Recorrer Usuarios y registrar faltas para quienes no marcaron entrada
+    // Recorrer Usuarios y registrar falta para quienes no marcaron entrada
     for (var i = 1; i < usuarios.length; i++) {
       var dniUsuario = usuarios[i][0].toString().trim();
       var nombreUsuario = usuarios[i][1] ? usuarios[i][1].toString().trim() : "";
 
       if (!marcadosHoy[dniUsuario]) {
-        var datosFaltas = hojaFaltas.getDataRange().getValues();
         var existeFalta = false;
-        for (var j = 1; j < datosFaltas.length; j++) {
-          var dniFalta = datosFaltas[j][0].toString().trim();
-          var fechaFalta = datosFaltas[j][2].toString().trim();
-          if (dniUsuario === dniFalta && fechaFalta === fechaHoy) {
+        for (var j = 1; j < registros.length; j++) {
+          var dniFila = registros[j][0].toString().trim();
+          var fechaFila = registros[j][2] instanceof Date && !isNaN(registros[j][2])
+                ? Utilities.formatDate(registros[j][2], timeZone, "yyyy-MM-dd")
+                : registros[j][2].toString().trim();
+          var tipoFila = registros[j][4] ? registros[j][4].toString().trim() : "";
+          if (dniUsuario === dniFila && fechaFila === fechaHoy && tipoFila === "Falta") {
             existeFalta = true;
             break;
           }
         }
         if (!existeFalta) {
-          hojaFaltas.appendRow([dniUsuario, nombreUsuario, fechaHoy, ""]);
+          var horaActual = Utilities.formatDate(new Date(), timeZone, "HH:mm:ss");
+          // Registrar la falta en BDregistros con Tipo "Falta" y Observaciones "falto por"
+          hojaRegistros.appendRow([
+            dniUsuario,
+            nombreUsuario,
+            fechaHoy,
+            horaActual,
+            "Falta",
+            "falto por",
+            "",
+            "",
+            ""
+          ]);
         }
       }
     }
@@ -970,22 +984,25 @@ function registrarFaltasAutomaticas() {
   }
 }
 
+// Actualizamos las funciones para obtener las faltas desde BDregistros
 function obtenerFaltas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName("Faltas");
-    var data = hoja.getDataRange().getValues();
+    var hoja = ss.getSheetByName("BDregistros");
+    var datos = hoja.getDataRange().getValues();
     var faltas = [];
 
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0]) {
-        faltas.push({
-          dni: data[i][0],
-          nombre: data[i][1],
-          fecha: data[i][2],
-          observaciones: data[i][3] || "",
-          id: i
-        });
+    for (var i = 1; i < datos.length; i++) {
+      var fila = datos[i];
+      var tipoFila = fila[4] ? fila[4].toString().trim() : "";
+      if (tipoFila === "Falta") {
+         faltas.push({
+           dni: fila[0],
+           nombre: fila[1],
+           fecha: fila[2],
+           observaciones: fila[5] || "",
+           id: i
+         });
       }
     }
     return faltas;
@@ -995,35 +1012,22 @@ function obtenerFaltas() {
   }
 }
 
-function actualizarFalta(faltaId, observaciones) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName("Faltas");
-    var row = parseInt(faltaId) + 1;
-    hoja.getRange(row, 4).setValue(observaciones);
-    return { mensaje: "Falta actualizada correctamente." };
-  } catch (error) {
-    Logger.log("Error en actualizarFalta: " + error);
-    return { error: true, mensaje: "Error al actualizar la falta: " + error.message };
-  }
-}
-
-// NUEVA FUNCIÓN: OBTENER FALTAS POR USUARIO
 function obtenerFaltasPorUsuario(dni) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName("Faltas");
+    var hoja = ss.getSheetByName("BDregistros");
     var data = hoja.getDataRange().getValues();
     var faltas = [];
-
     var usuarioDNI = dni || PropertiesService.getUserProperties().getProperty("usuarioActivo");
     for (var i = 1; i < data.length; i++) {
-      if (data[i][0] && data[i][0].toString().trim() === usuarioDNI.toString().trim()) {
+      var fila = data[i];
+      if (fila[0] && fila[0].toString().trim() === usuarioDNI.toString().trim() &&
+          fila[4].toString().trim() === "Falta") {
         faltas.push({
-          dni: data[i][0],
-          nombre: data[i][1],
-          fecha: data[i][2],
-          observaciones: data[i][3] || "",
+          dni: fila[0],
+          nombre: fila[1],
+          fecha: fila[2],
+          observaciones: fila[5] || "",
           id: i
         });
       }
@@ -1035,43 +1039,35 @@ function obtenerFaltasPorUsuario(dni) {
   }
 }
 
-/**
- * Función de prueba para ver en Logs las faltas del usuario activo.
- */
-function probarFaltas() {
-  var faltas = obtenerFaltasPorUsuario();
-  Logger.log(JSON.stringify(faltas, null, 2));
-}
-
-/************** NUEVA FUNCIÓN PARA FILTRAR FALTAS POR FECHAS (Panel Admin) **************/
 function obtenerFaltasPorFechas(fechaInicio, fechaFin) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hoja = ss.getSheetByName("Faltas");
+    var hoja = ss.getSheetByName("BDregistros");
     var datos = hoja.getDataRange().getValues();
     var faltas = [];
     var timeZone = ss.getSpreadsheetTimeZone();
     for (var i = 1; i < datos.length; i++) {
-      var fecha = datos[i][2];
+      var fila = datos[i];
+      var tipoFila = fila[4] ? fila[4].toString().trim() : "";
+      if (tipoFila !== "Falta") continue;
+      
+      var fecha = fila[2];
       var fechaStr;
       if (fecha instanceof Date && !isNaN(fecha)) {
         fechaStr = Utilities.formatDate(fecha, timeZone, "yyyy-MM-dd");
       } else {
         fechaStr = fecha.toString().trim();
       }
-      // Filtrar por fechas si se han especificado ambas
       if (fechaInicio && fechaFin) {
         if (fechaStr < fechaInicio || fechaStr > fechaFin) continue;
       }
-      if (datos[i][0]) {
-        faltas.push({
-          dni: datos[i][0],
-          nombre: datos[i][1],
-          fecha: fechaStr,
-          observaciones: datos[i][3] || "",
-          id: i
-        });
-      }
+      faltas.push({
+        dni: fila[0],
+        nombre: fila[1],
+        fecha: fechaStr,
+        observaciones: fila[5] || "",
+        id: i
+      });
     }
     return faltas;
   } catch (error) {
