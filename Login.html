@@ -952,19 +952,6 @@
           <tbody id="tbodyRegistros"></tbody>
         </table>
       </div>
-      <!-- Sección para mostrar las faltas del usuario -->
-      <div class="mis-faltas-section" id="misFaltasSection">
-        <h4>Mis Faltas</h4>
-        <table id="tablaFaltasUsuario">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyFaltasUsuario"></tbody>
-        </table>
-      </div>
     </div>
     
     <!-- PANEL DE ADMINISTRACIÓN -->
@@ -1138,6 +1125,16 @@
           <label for="rgFechaFin">Fecha Fin:</label>
           <input type="date" id="rgFechaFin">
         </div>
+        <!-- Nuevo select para filtrar por Tipo (Entrada, Salida, Falta) -->
+        <div class="input-group">
+          <label for="rgTipo">Tipo:</label>
+          <select id="rgTipo">
+            <option value="">Todos</option>
+            <option value="Entrada">Entrada</option>
+            <option value="Salida">Salida</option>
+            <option value="Falta">Falta</option>
+          </select>
+        </div>
         <button class="btn-blue" onclick="filtrarReporteGeneral()">
           <i class="fa-solid fa-filter"></i> Filtrar
         </button>
@@ -1194,6 +1191,7 @@
             <option value="">Todos</option>
             <option value="Entrada">Entrada</option>
             <option value="Salida">Salida</option>
+            <option value="Falta">Falta</option>
           </select>
         </div>
         <button class="btn-blue" onclick="filtrarReporteIndividual()">
@@ -1222,21 +1220,6 @@
         </table>
       </div>
       <!-- Sección para mostrar faltas del usuario en reporte individual -->
-      <div class="mis-faltas-section-individual" id="reporteIndividualFaltasSection">
-        <h4>Faltas del Usuario</h4>
-        <table id="tablaReporteIndividualFaltas">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyReporteIndividualFaltas"></tbody>
-        </table>
-      </div>
-      <div class="chart-container" style="margin-top: 20px;">
-        <canvas id="reporteIndividualChart" width="400" height="200"></canvas>
-      </div>
     </div>
     
     <!-- Modal para Añadir Registro Manual -->
@@ -2227,13 +2210,15 @@
       }
       
       /************** Funciones para el Reporte General **************/
+      // Actualizado para incluir el filtro por Tipo
       function filtrarReporteGeneral() {
         var fechaInicio = document.getElementById("rgFechaInicio").value;
         var fechaFin = document.getElementById("rgFechaFin").value;
+        var tipo = document.getElementById("rgTipo").value;  // Nuevo filtro por Tipo
         google.script.run
           .withSuccessHandler(renderizarReporteGeneral)
           .withFailureHandler(handleError)
-          .obtenerRegistrosUsuario(fechaInicio, fechaFin);
+          .obtenerReporteIndividual("", fechaInicio, fechaFin, tipo);
       }
       
       function renderizarReporteGeneral(registros) {
@@ -2650,240 +2635,6 @@
         });
       }
       
-      /************** Funciones para cargar faltas del Usuario **************/
-      function cargarReporteIndividualFaltas(dni) {
-        google.script.run
-          .withSuccessHandler(renderizarReporteIndividualFaltas)
-          .withFailureHandler(handleError)
-          .obtenerFaltasPorUsuario(dni);
-      }
-      
-      function renderizarReporteIndividualFaltas(faltas) {
-        const tbody = document.getElementById("tbodyReporteIndividualFaltas");
-        tbody.innerHTML = "";
-        if (faltas.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 2;
-          td.textContent = "No se encontraron faltas para este usuario.";
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          return;
-        }
-        faltas.forEach(falta => {
-          const tr = document.createElement("tr");
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = falta.fecha;
-          const tdObs = document.createElement("td");
-          tdObs.textContent = falta.observaciones;
-          tr.appendChild(tdFecha);
-          tr.appendChild(tdObs);
-          tbody.appendChild(tr);
-        });
-      }
-      
-      /************** EXPORTAR REPORTE INDIVIDUAL **************/
-      function exportarReporteIndividual() {
-        if (reporteIndividualData.length === 0) {
-          showFancyAlert("No hay datos para exportar.");
-          return;
-        }
-        let csv = "DNI,Nombre,Fecha,Hora,Tipo,Observaciones,Ubicación,Lugar\n";
-        reporteIndividualData.forEach(reg => {
-          csv += [
-            reg.dni || "",
-            reg.nombre || "",
-            reg.fecha || "",
-            reg.hora || "",
-            reg.tipo || "",
-            reg.observaciones ? '"' + reg.observaciones.replace(/"/g, '""') + '"' : "",
-            reg.ubicacion || "",
-            reg.lugar || ""
-          ].join(",") + "\n";
-        });
-        let blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-        let link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "reporte_individual.csv";
-        link.click();
-      }
-      
-      /************** Funciones para el Modal de Añadir Registro **************/
-      function mostrarModalAddRegistro() {
-        const now = new Date();
-        let hora = now.toTimeString().slice(0,5);
-        document.getElementById("addHora").value = hora;
-        document.getElementById("addObs").value = "";
-        if (geoballasList.length > 0) {
-          document.getElementById("addLugarSelect").value = geoballasList[0].lugar;
-          document.getElementById("addUbicacion").value = geoballasList[0].ubicacion;
-        }
-        document.getElementById("addDNI").value = "";
-        document.getElementById("addNombre").value = "";
-        document.getElementById("modalAddRegistro").style.display = "block";
-      }
-      
-      function cerrarModalAddRegistro() {
-        document.getElementById("modalAddRegistro").style.display = "none";
-      }
-      
-      /************** Funciones para Editar Registro (Modal) **************/
-      function editarRegistroManual(registro) {
-        document.getElementById("editRegId").value = registro.id || "";
-        document.getElementById("editTipo").value = registro.tipo || "Entrada";
-        document.getElementById("editHora").value = registro.hora.slice(0,5);
-        document.getElementById("editObs").value = registro.observaciones || "";
-        if (registro.lugar) {
-          document.getElementById("editLugarSelect").value = registro.lugar;
-          const geo = geoballasList.find(g => g.lugar === registro.lugar);
-          if (geo) {
-            document.getElementById("editUbicacion").value = geo.ubicacion;
-          } else {
-            document.getElementById("editUbicacion").value = "";
-          }
-        }
-        document.getElementById("modalEditRegistro").style.display = "block";
-      }
-      
-      function cerrarModalEditRegistro() {
-        document.getElementById("modalEditRegistro").style.display = "none";
-      }
-      
-      function enviarActualizacionRegistro() {
-        const regId = document.getElementById("editRegId").value;
-        const tipo = document.getElementById("editTipo").value;
-        const hora = document.getElementById("editHora").value;
-        const obs = document.getElementById("editObs").value.trim();
-        const lugar = document.getElementById("editLugarSelect").value;
-        const ubicacion = document.getElementById("editUbicacion").value;
-        if (!regId) {
-          showFancyAlert("No se encontró el ID del registro a editar.");
-          return;
-        }
-        const registroEditado = {
-          id: regId,
-          tipo: tipo,
-          hora: hora,
-          observaciones: obs,
-          lugar: lugar,
-          ubicacion: ubicacion
-        };
-        google.script.run
-          .withSuccessHandler(function(res) {
-            showFancyAlert(res.mensaje || "Registro actualizado.");
-            cerrarModalEditRegistro();
-            filtrarReporteGeneral();
-          })
-          .withFailureHandler(handleError)
-          .actualizarRegistroManual(registroEditado);
-      }
-      
-      function eliminarRegistroManual(registroId) {
-        showFancyConfirm(
-          "¿Está seguro de eliminar este registro?",
-          function() {
-            google.script.run
-              .withSuccessHandler(function(res) {
-                showFancyAlert(res.mensaje || "Registro eliminado.");
-                filtrarReporteGeneral();
-              })
-              .withFailureHandler(handleError)
-              .eliminarRegistroManual(registroId);
-          },
-          function() { console.log("Eliminación cancelada"); }
-        );
-      }
-      
-      /************** Funciones para Editar Falta (Modal) **************/
-      function editarFalta(falta) {
-        document.getElementById("editFaltaId").value = falta.id;
-        document.getElementById("editFaltaObs").value = falta.observaciones || "";
-        document.getElementById("modalEditFalta").style.display = "block";
-      }
-      
-      function cerrarModalEditFalta() {
-        document.getElementById("modalEditFalta").style.display = "none";
-      }
-      
-      function enviarActualizacionFalta() {
-        const faltaId = document.getElementById("editFaltaId").value;
-        const obs = document.getElementById("editFaltaObs").value.trim();
-        if (!faltaId) {
-          showFancyAlert("No se encontró el ID de la falta.");
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(function(res) {
-            showFancyAlert(res.mensaje || "Falta actualizada.");
-            cerrarModalEditFalta();
-            mostrarFaltas();
-          })
-          .withFailureHandler(handleError)
-          .actualizarFalta(faltaId, obs);
-      }
-      
-      /************** Funciones para el Mapa de Geoballas **************/
-      var map;
-      var marker;
-      var circle;
-      
-      function updateCircle(center) {
-        var radioInput = document.getElementById("geoballaRadio").value;
-        var radio = parseFloat(radioInput);
-        if (isNaN(radio)) radio = 50;
-        if (!circle) {
-          circle = new google.maps.Circle({
-            map: map,
-            center: center,
-            radius: radio,
-            fillColor: "#FF0000",
-            fillOpacity: 0.2,
-            strokeColor: "#FF0000",
-            strokeOpacity: 0.8,
-            strokeWeight: 2
-          });
-        } else {
-          circle.setCenter(center);
-          circle.setRadius(radio);
-        }
-      }
-      
-      function initMap() {
-        const defaultLatLng = { lat: -8.109, lng: -79.021 };
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: defaultLatLng,
-          zoom: 15,
-        });
-        marker = new google.maps.Marker({
-          position: defaultLatLng,
-          map: map,
-          icon: {
-            url: "https://i.imgur.com/tud5XMS.png",
-            scaledSize: new google.maps.Size(32, 32)
-          }
-        });
-        updateCircle(defaultLatLng);
-        map.addListener("click", (e) => {
-          const lat = e.latLng.lat();
-          const lng = e.latLng.lng();
-          const newPos = { lat, lng };
-          if (!marker) {
-            marker = new google.maps.Marker({
-              position: newPos,
-              map: map,
-              icon: {
-                url: "https://i.imgur.com/tud5XMS.png",
-                scaledSize: new google.maps.Size(32, 32)
-              }
-            });
-          } else {
-            marker.setPosition(newPos);
-          }
-          updateCircle(newPos);
-          document.getElementById("geoballaUbicacion").value = lat + "," + lng;
-        });
-      }
-      
       /************** Funciones para cargar faltas del Usuario (Reporte Individual) **************/
       function cargarReporteIndividualFaltas(dni) {
         google.script.run
@@ -3068,5 +2819,6 @@
     </script>
   </body>
 </html>
+
 
 
