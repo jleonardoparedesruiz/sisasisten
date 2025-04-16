@@ -685,7 +685,6 @@
         color: #333;
         margin-bottom: 10px;
       }
-      /* Agregamos inputs para filtrar por fecha dentro de la sección faltas */
       .faltas-section .filtros {
         margin-bottom: 20px;
         display: flex;
@@ -812,6 +811,50 @@
       }
       #modalEditFalta .modal-content h3 {
         margin-top: 0;
+      }
+      /* ==============================
+         Estilos para el Modal de la Foto de Asistencia
+         ============================== */
+      #modalFoto {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        z-index: 21000;
+        align-items: center;
+        justify-content: center;
+      }
+      #modalFoto .modal-content {
+        background-color: #fff;
+        margin: auto;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        max-width: 600px;
+      }
+      #modalFoto .modal-content h3 {
+        margin-top: 0;
+      }
+      #modalFoto #loaderFoto {
+        text-align: center;
+        font-weight: bold;
+        color: #e53935;
+        margin: 15px 0;
+      }
+      #modalFoto #imgModal {
+        display: none;
+        width: 100%;
+        max-height: 500px;
+        object-fit: contain;
+        border-radius: 10px;
+      }
+      #modalFoto .close {
+        float: right;
+        font-size: 20px;
+        cursor: pointer;
+        margin-right: 5px;
       }
       @media (max-width: 800px) {
         .form-usuarios .row-fields {
@@ -1073,7 +1116,6 @@
         <!-- Sección Faltas (Admin) con campos para filtrar por fechas -->
         <div class="faltas-section" id="faltasSection">
           <h3><i class="fa-solid fa-exclamation-circle"></i> Faltas Registradas</h3>
-          <!-- Filtros por fecha para faltas -->
           <div class="filtros">
             <div class="date-group">
               <label for="fFechaInicio">Fecha Inicio:</label>
@@ -1102,7 +1144,6 @@
             </table>
           </div>
         </div>
-        
       </div>
     </div>
     
@@ -1125,7 +1166,6 @@
           <label for="rgFechaFin">Fecha Fin:</label>
           <input type="date" id="rgFechaFin">
         </div>
-        <!-- Nuevo select para filtrar por Tipo (Entrada, Salida, Falta) -->
         <div class="input-group">
           <label for="rgTipo">Tipo:</label>
           <select id="rgTipo">
@@ -1349,6 +1389,19 @@
         <div class="button-group-confirm">
           <button id="fancyConfirmYes">Sí</button>
           <button id="fancyConfirmNo">No</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal para visualizar la imagen de asistencia -->
+    <div id="modalFoto" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:600px; text-align:center;">
+        <span class="close" style="float:right; font-size:20px; cursor:pointer; margin-right:5px;" onclick="cerrarModalFoto()">&times;</span>
+        <h3>Foto de asistencia</h3>
+        <div id="loaderFoto" style="text-align:center; font-weight:bold; color:#e53935; margin:15px 0;">Cargando...</div>
+        <img id="imgModal" src="" alt="Foto de asistencia" style="display:none; width:100%; max-height:500px; object-fit:contain; border-radius:10px;">
+        <div style="margin-top:10px;">
+          <button class="btn-gray" onclick="cerrarModalFoto()">Cerrar</button>
         </div>
       </div>
     </div>
@@ -1747,7 +1800,6 @@
         }
         faltas.forEach(falta => {
           const tr = document.createElement("tr");
-          // Formatear fecha (dd/MM/yyyy)
           const tdFecha = document.createElement("td");
           let fechaStr = falta.fecha;
           if (fechaStr) {
@@ -1839,7 +1891,6 @@
         document.getElementById("reporteGeneralSection").style.display = "none";
         document.getElementById("reporteIndividualSection").style.display = "none";
         document.getElementById("faltasSection").style.display = "block";
-        // Aquí traemos TODAS las faltas (sin filtro) inicialmente:
         google.script.run
           .withSuccessHandler(renderizarFaltas)
           .withFailureHandler(handleError)
@@ -2163,417 +2214,66 @@
           if (typeof onNo === "function") onNo();
         };
       }
-      
-      /************** ESTADÍSTICAS Y REPORTES **************/
-      function mostrarEstadisticas() {
-        document.getElementById("adminPanel").classList.remove("hidden");
-        document.getElementById("adminPanel").classList.add("visible");
-        document.getElementById("usersSection").style.display = "none";
-        document.getElementById("geoballasSection").style.display = "none";
-        document.getElementById("reporteGeneralSection").style.display = "none";
-        document.getElementById("reporteIndividualSection").style.display = "none";
-        document.getElementById("faltasSection").style.display = "none";
-        google.script.run
-          .withSuccessHandler(function(stats) {
-            let mensaje = "Estadísticas generales:\n";
-            mensaje += "Total Registros: " + stats.totalRegistros + "\n";
-            mensaje += "Total Entradas: " + stats.totalEntradas + "\n";
-            mensaje += "Total Salidas: " + stats.totalSalidas + "\n\n";
-            mensaje += "Registros por Usuario:\n";
-            for (let dni in stats.registrosPorUsuario) {
-              mensaje += dni + ": " + stats.registrosPorUsuario[dni] + "\n";
-            }
-            showFancyAlert(mensaje);
-          })
-          .withFailureHandler(handleError)
-          .obtenerEstadisticas();
+    /************** FUNCIONES PARA VISUALIZAR FOTO (CON PROXY) **************/
+function verFoto(url) {
+  const modal  = document.getElementById("modalFoto");
+  const loader = document.getElementById("loaderFoto");
+  const img    = document.getElementById("imgModal");
+
+  // muestra modal + loader
+  modal.style.display  = "flex";
+  loader.style.display = "block";
+  img.style.display    = "none";
+
+  // extrae el ID del parámetro id=XXX
+  const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (!match) {
+    loader.style.display = "none";
+    showFancyAlert("ID de archivo inválido.");
+    return;
+  }
+  const fileId = match[1];
+
+  // pide al servidor el Base64
+  google.script.run
+    .withSuccessHandler(function(b64) {
+      if (!b64) {
+        loader.style.display = "none";
+        showFancyAlert("No se pudo obtener la foto.");
+        return;
       }
-      
-      function reporteGeneral() {
-        document.getElementById("adminPanel").classList.remove("visible");
-        document.getElementById("adminPanel").style.display = "none";
-        document.getElementById("reporteGeneralSection").style.display = "block";
-        setTimeout(() => {
-          document.getElementById("reporteGeneralSection").classList.add("visible");
-        }, 300);
-        filtrarReporteGeneral();
-      }
-      
-      function reporteIndividual() {
-        document.getElementById("adminPanel").classList.remove("visible");
-        document.getElementById("adminPanel").style.display = "none";
-        document.getElementById("reporteIndividualSection").style.display = "block";
-        setTimeout(() => {
-          document.getElementById("reporteIndividualSection").classList.add("visible");
-        }, 300);
-        filtrarReporteIndividual();
-      }
-      
-      /************** Funciones para el Reporte General **************/
-      // Actualizado para incluir el filtro por Tipo
-      function filtrarReporteGeneral() {
-        var fechaInicio = document.getElementById("rgFechaInicio").value;
-        var fechaFin = document.getElementById("rgFechaFin").value;
-        var tipo = document.getElementById("rgTipo").value;  // Nuevo filtro por Tipo
-        google.script.run
-          .withSuccessHandler(renderizarReporteGeneral)
-          .withFailureHandler(handleError)
-          .obtenerReporteIndividual("", fechaInicio, fechaFin, tipo);
-      }
-      
-      function renderizarReporteGeneral(registros) {
-        const tbody = document.getElementById("tbodyReporteGeneral");
-        tbody.innerHTML = "";
-        if (registros.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 9;
-          td.textContent = "No se encontraron registros.";
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          return;
-        }
-        registros.forEach(reg => {
-          const tr = document.createElement("tr");
-          // Columna Foto
-          const tdFoto = document.createElement("td");
-          if (reg.foto) {
-            const btnFoto = document.createElement("button");
-            btnFoto.classList.add("btn-gray");
-            btnFoto.innerHTML = '<i class="fa-solid fa-image"></i>';
-            btnFoto.onclick = function() { verFoto(reg.foto); };
-            tdFoto.appendChild(btnFoto);
-          } else {
-            tdFoto.textContent = "Sin foto";
-          }
-          tr.appendChild(tdFoto);
-          // Nombre
-          const tdNombre = document.createElement("td");
-          tdNombre.textContent = reg.nombre || "";
-          tr.appendChild(tdNombre);
-          // Fecha
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = reg.fecha || "";
-          tr.appendChild(tdFecha);
-          // Hora
-          const tdHora = document.createElement("td");
-          tdHora.textContent = reg.hora || "";
-          tr.appendChild(tdHora);
-          // Tipo
-          const tdTipo = document.createElement("td");
-          tdTipo.textContent = reg.tipo || "";
-          tr.appendChild(tdTipo);
-          // Observaciones
-          const tdObs = document.createElement("td");
-          tdObs.textContent = reg.observaciones || "";
-          tr.appendChild(tdObs);
-          // Ubicación
-          const tdUbicacion = document.createElement("td");
-          tdUbicacion.textContent = reg.ubicacion || "";
-          tr.appendChild(tdUbicacion);
-          // Lugar
-          const tdLugar = document.createElement("td");
-          tdLugar.textContent = reg.lugar || "";
-          tr.appendChild(tdLugar);
-          // Acciones
-          const tdAcciones = document.createElement("td");
-          const btnEdit = document.createElement("button");
-          btnEdit.classList.add("btn-orange");
-          btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-          btnEdit.onclick = function() { editarRegistroManual(reg); };
-          const btnDelete = document.createElement("button");
-          btnDelete.classList.add("btn-red");
-          btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
-          btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
-          tdAcciones.appendChild(btnEdit);
-          tdAcciones.appendChild(btnDelete);
-          tr.appendChild(tdAcciones);
-          tbody.appendChild(tr);
-        });
-      }
-      
-      /************** Funciones para el Reporte Individual **************/
-      function filtrarReporteIndividual() {
-        var dni = document.getElementById("riDNI").value;
-        var fechaInicio = document.getElementById("riFechaInicio").value;
-        var fechaFin = document.getElementById("riFechaFin").value;
-        var tipo = document.getElementById("riTipo").value;
-        google.script.run
-          .withSuccessHandler(renderizarReporteIndividual)
-          .withFailureHandler(handleError)
-          .obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo);
-        // Cargar faltas del usuario consultado
-        google.script.run
-          .withSuccessHandler(renderizarReporteIndividualFaltas)
-          .withFailureHandler(handleError)
-          .obtenerFaltasPorUsuario(dni);
-      }
-      
-      function renderizarReporteIndividual(registros) {
-        reporteIndividualData = registros; // Guardamos para exportar
-        const tbody = document.getElementById("tbodyReporteIndividual");
-        tbody.innerHTML = "";
-        if (registros.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 9;
-          td.textContent = "No se encontraron registros.";
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          if (window.reporteIndividualChartInstance) { window.reporteIndividualChartInstance.destroy(); }
-          return;
-        }
-        registros.forEach(reg => {
-          const tr = document.createElement("tr");
-          // Columna Foto
-          const tdFoto = document.createElement("td");
-          if (reg.foto) {
-            const btnFoto = document.createElement("button");
-            btnFoto.classList.add("btn-gray");
-            btnFoto.innerHTML = '<i class="fa-solid fa-image"></i>';
-            btnFoto.onclick = function() { verFoto(reg.foto); };
-            tdFoto.appendChild(btnFoto);
-          } else {
-            tdFoto.textContent = "Sin foto";
-          }
-          tr.appendChild(tdFoto);
-          // Nombre
-          const tdNombre = document.createElement("td");
-          tdNombre.textContent = reg.nombre || "";
-          tr.appendChild(tdNombre);
-          // Fecha
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = reg.fecha || "";
-          tr.appendChild(tdFecha);
-          // Hora
-          const tdHora = document.createElement("td");
-          tdHora.textContent = reg.hora || "";
-          tr.appendChild(tdHora);
-          // Tipo
-          const tdTipo = document.createElement("td");
-          tdTipo.textContent = reg.tipo || "";
-          tr.appendChild(tdTipo);
-          // Observaciones
-          const tdObs = document.createElement("td");
-          tdObs.textContent = reg.observaciones || "";
-          tr.appendChild(tdObs);
-          // Ubicación
-          const tdUbicacion = document.createElement("td");
-          tdUbicacion.textContent = reg.ubicacion || "";
-          tr.appendChild(tdUbicacion);
-          // Lugar
-          const tdLugar = document.createElement("td");
-          tdLugar.textContent = reg.lugar || "";
-          tr.appendChild(tdLugar);
-          // Acciones
-          const tdAcciones = document.createElement("td");
-          const btnEdit = document.createElement("button");
-          btnEdit.classList.add("btn-orange");
-          btnEdit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-          btnEdit.onclick = function() { editarRegistroManual(reg); };
-          const btnDelete = document.createElement("button");
-          btnDelete.classList.add("btn-red");
-          btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
-          btnDelete.onclick = function() { eliminarRegistroManual(reg.id); };
-          tdAcciones.appendChild(btnEdit);
-          tdAcciones.appendChild(btnDelete);
-          tr.appendChild(tdAcciones);
-          tbody.appendChild(tr);
-        });
-        crearChartReporteIndividual(registros);
-      }
-      
-      function crearChartReporteIndividual(registros) {
-        let countEntrada = registros.filter(r => r.tipo === "Entrada").length;
-        let countSalida = registros.filter(r => r.tipo === "Salida").length;
-        if (window.reporteIndividualChartInstance) {
-          window.reporteIndividualChartInstance.destroy();
-        }
-        const ctx = document.getElementById("reporteIndividualChart").getContext('2d');
-        window.reporteIndividualChartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: ['Entrada', 'Salida'],
-            datasets: [{
-              label: '# de Marcaciones',
-              data: [countEntrada, countSalida],
-              backgroundColor: ['rgba(229,57,53,0.6)', 'rgba(0,123,255,0.6)'],
-              borderColor: ['rgba(229,57,53,1)', 'rgba(0,123,255,1)'],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            scales: {
-              y: { beginAtZero: true }
-            }
-          }
-        });
-      }
-      
-      function renderizarReporteIndividualFaltas(faltas) {
-        const tbody = document.getElementById("tbodyReporteIndividualFaltas");
-        tbody.innerHTML = "";
-        if (faltas.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 2;
-          td.textContent = "No se encontraron faltas para este usuario.";
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          return;
-        }
-        faltas.forEach(falta => {
-          const tr = document.createElement("tr");
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = falta.fecha;
-          const tdObs = document.createElement("td");
-          tdObs.textContent = falta.observaciones;
-          tr.appendChild(tdFecha);
-          tr.appendChild(tdObs);
-          tbody.appendChild(tr);
-        });
-      }
-      
-      function exportarReporteIndividual() {
-        if (reporteIndividualData.length === 0) {
-          showFancyAlert("No hay datos para exportar.");
-          return;
-        }
-        let csv = "DNI,Nombre,Fecha,Hora,Tipo,Observaciones,Ubicación,Lugar\n";
-        reporteIndividualData.forEach(reg => {
-          csv += [
-            reg.dni || "",
-            reg.nombre || "",
-            reg.fecha || "",
-            reg.hora || "",
-            reg.tipo || "",
-            reg.observaciones ? '"' + reg.observaciones.replace(/"/g, '""') + '"' : "",
-            reg.ubicacion || "",
-            reg.lugar || ""
-          ].join(",") + "\n";
-        });
-        let blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-        let link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "reporte_individual.csv";
-        link.click();
-      }
-      
-      /************** Funciones para el Modal de Añadir Registro **************/
-      function mostrarModalAddRegistro() {
-        const now = new Date();
-        let hora = now.toTimeString().slice(0,5);
-        document.getElementById("addHora").value = hora;
-        document.getElementById("addObs").value = "";
-        if (geoballasList.length > 0) {
-          document.getElementById("addLugarSelect").value = geoballasList[0].lugar;
-          document.getElementById("addUbicacion").value = geoballasList[0].ubicacion;
-        }
-        document.getElementById("addDNI").value = "";
-        document.getElementById("addNombre").value = "";
-        document.getElementById("modalAddRegistro").style.display = "block";
-      }
-      
-      function cerrarModalAddRegistro() {
-        document.getElementById("modalAddRegistro").style.display = "none";
-      }
-      
-      /************** Funciones para Editar Registro (Modal) **************/
-      function editarRegistroManual(registro) {
-        document.getElementById("editRegId").value = registro.id || "";
-        document.getElementById("editTipo").value = registro.tipo || "Entrada";
-        document.getElementById("editHora").value = registro.hora.slice(0,5);
-        document.getElementById("editObs").value = registro.observaciones || "";
-        if (registro.lugar) {
-          document.getElementById("editLugarSelect").value = registro.lugar;
-          const geo = geoballasList.find(g => g.lugar === registro.lugar);
-          if (geo) {
-            document.getElementById("editUbicacion").value = geo.ubicacion;
-          } else {
-            document.getElementById("editUbicacion").value = "";
-          }
-        }
-        document.getElementById("modalEditRegistro").style.display = "block";
-      }
-      
-      function cerrarModalEditRegistro() {
-        document.getElementById("modalEditRegistro").style.display = "none";
-      }
-      
-      function enviarActualizacionRegistro() {
-        const regId = document.getElementById("editRegId").value;
-        const tipo = document.getElementById("editTipo").value;
-        const hora = document.getElementById("editHora").value;
-        const obs = document.getElementById("editObs").value.trim();
-        const lugar = document.getElementById("editLugarSelect").value;
-        const ubicacion = document.getElementById("editUbicacion").value;
-        if (!regId) {
-          showFancyAlert("No se encontró el ID del registro a editar.");
-          return;
-        }
-        const registroEditado = {
-          id: regId,
-          tipo: tipo,
-          hora: hora,
-          observaciones: obs,
-          lugar: lugar,
-          ubicacion: ubicacion
-        };
-        google.script.run
-          .withSuccessHandler(function(res) {
-            showFancyAlert(res.mensaje || "Registro actualizado.");
-            cerrarModalEditRegistro();
-            filtrarReporteGeneral();
-          })
-          .withFailureHandler(handleError)
-          .actualizarRegistroManual(registroEditado);
-      }
-      
-      function eliminarRegistroManual(registroId) {
-        showFancyConfirm(
-          "¿Está seguro de eliminar este registro?",
-          function() {
-            google.script.run
-              .withSuccessHandler(function(res) {
-                showFancyAlert(res.mensaje || "Registro eliminado.");
-                filtrarReporteGeneral();
-              })
-              .withFailureHandler(handleError)
-              .eliminarRegistroManual(registroId);
-          },
-          function() { console.log("Eliminación cancelada"); }
-        );
-      }
-      
-      /************** Funciones para Editar Falta (Modal) **************/
-      function editarFalta(falta) {
-        document.getElementById("editFaltaId").value = falta.id;
-        document.getElementById("editFaltaObs").value = falta.observaciones || "";
-        document.getElementById("modalEditFalta").style.display = "block";
-      }
-      
-      function cerrarModalEditFalta() {
-        document.getElementById("modalEditFalta").style.display = "none";
-      }
-      
-      function enviarActualizacionFalta() {
-        const faltaId = document.getElementById("editFaltaId").value;
-        const obs = document.getElementById("editFaltaObs").value.trim();
-        if (!faltaId) {
-          showFancyAlert("No se encontró el ID de la falta.");
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(function(res) {
-            showFancyAlert(res.mensaje || "Falta actualizada.");
-            cerrarModalEditFalta();
-            mostrarFaltas();
-          })
-          .withFailureHandler(handleError)
-          .actualizarFalta(faltaId, obs);
-      }
-      
-      /************** Funciones para el Mapa de Geoballas **************/
+      img.onload = function() {
+        loader.style.display = "none";
+        img.style.display    = "block";
+      };
+      img.onerror = function() {
+        loader.style.display = "none";
+        showFancyAlert("Error al mostrar la foto.");
+      };
+      // monta el data URI
+      img.src = "data:image/jpeg;base64," + b64;
+    })
+    .withFailureHandler(function(err) {
+      loader.style.display = "none";
+      showFancyAlert("Error al cargar la foto: " + err.message);
+    })
+    .getFotoBase64(fileId);
+}
+
+function cerrarModalFoto() {
+  const modal = document.getElementById("modalFoto");
+  const img   = document.getElementById("imgModal");
+
+  // Quita los handlers para que no dispare onerror al limpiar
+  img.onload  = null;
+  img.onerror = null;
+
+  // Oculta el modal y limpia la src sin disparar onerror
+  modal.style.display = "none";
+  img.src            = "";
+}
+  
+      /************** FUNCIONES PARA EL MAPA DE GEOBALLAS **************/
       var map;
       var marker;
       var circle;
@@ -2635,7 +2335,7 @@
         });
       }
       
-      /************** Funciones para cargar faltas del Usuario (Reporte Individual) **************/
+      /************** FUNCIONES PARA CARGAR FALTAS DEL USUARIO (REPORTE INDIVIDUAL) **************/
       function cargarReporteIndividualFaltas(dni) {
         google.script.run
           .withSuccessHandler(renderizarReporteIndividualFaltas)
@@ -2667,7 +2367,6 @@
         });
       }
       
-      /************** EXPORTAR REPORTE INDIVIDUAL **************/
       function exportarReporteIndividual() {
         if (reporteIndividualData.length === 0) {
           showFancyAlert("No hay datos para exportar.");
@@ -2693,7 +2392,7 @@
         link.click();
       }
       
-      /************** Funciones para el Modal de Añadir Registro **************/
+      /************** FUNCIONES PARA EL MODAL DE AÑADIR REGISTRO **************/
       function mostrarModalAddRegistro() {
         const now = new Date();
         let hora = now.toTimeString().slice(0,5);
@@ -2710,111 +2409,6 @@
       
       function cerrarModalAddRegistro() {
         document.getElementById("modalAddRegistro").style.display = "none";
-      }
-      
-      /************** Funciones de Fancy Alert y Fancy Confirm **************/
-      function showFancyAlert(message) {
-        const overlay = document.getElementById("fancyAlertOverlay");
-        const msg = document.getElementById("fancyAlertMessage");
-        msg.textContent = message;
-        overlay.classList.add("active");
-      }
-      
-      function closeFancyAlert() {
-        const overlay = document.getElementById("fancyAlertOverlay");
-        overlay.classList.remove("active");
-      }
-      
-      document.getElementById("fancyAlertClose").addEventListener("click", closeFancyAlert);
-      
-      function showFancyConfirm(message, onYes, onNo) {
-        const overlay = document.getElementById("fancyConfirmOverlay");
-        const msg = document.getElementById("fancyConfirmMessage");
-        msg.textContent = message;
-        overlay.classList.add("active");
-        const btnYes = document.getElementById("fancyConfirmYes");
-        const btnNo = document.getElementById("fancyConfirmNo");
-        btnYes.onclick = null;
-        btnNo.onclick = null;
-        btnYes.onclick = () => {
-          overlay.classList.remove("active");
-          if (typeof onYes === "function") onYes();
-        };
-        btnNo.onclick = () => {
-          overlay.classList.remove("active");
-          if (typeof onNo === "function") onNo();
-        };
-      }
-      
-      /************** NUEVA FUNCIÓN: Filtrar Faltas en el Panel Admin **************/
-      function filtrarFaltasAdmin() {
-        const fechaInicio = document.getElementById("fFechaInicio").value;
-        const fechaFin = document.getElementById("fFechaFin").value;
-        if (!fechaInicio || !fechaFin) {
-          showFancyAlert("Por favor, selecciona ambas fechas para filtrar las faltas.");
-          return;
-        }
-        google.script.run
-          .withSuccessHandler(renderizarFaltas)
-          .withFailureHandler(handleError)
-          .obtenerFaltasPorFechas(fechaInicio, fechaFin);
-      }
-      
-      function renderizarFaltas(resultado) {
-        // Si se devuelve un objeto de error, mostrar mensaje
-        if (resultado && resultado.error) {
-          showFancyAlert(resultado.mensaje);
-          return;
-        }
-        // Se asume que "resultado" es un arreglo de faltas filtradas
-        const faltas = resultado;
-        const tbody = document.getElementById("tbodyFaltas");
-        tbody.innerHTML = "";
-        if (faltas.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 5;
-          td.textContent = "No se encontraron faltas en este rango de fechas.";
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-          return;
-        }
-        faltas.forEach(falta => {
-          const tr = document.createElement("tr");
-          const tdDni = document.createElement("td");
-          tdDni.textContent = falta.dni;
-          const tdNombre = document.createElement("td");
-          tdNombre.textContent = falta.nombre;
-          const tdFecha = document.createElement("td");
-          tdFecha.textContent = falta.fecha;
-          const tdObs = document.createElement("td");
-          tdObs.textContent = falta.observaciones;
-          const tdAcciones = document.createElement("td");
-          // Ejemplo: botón para editar la falta
-          const btnEditar = document.createElement("button");
-          btnEditar.textContent = "Editar";
-          btnEditar.classList.add("btn-orange");
-          btnEditar.onclick = () => editarFalta(falta);
-          // Y botón para eliminar la falta (si tienes la función "eliminarFalta")
-          const btnEliminar = document.createElement("button");
-          btnEliminar.textContent = "Eliminar";
-          btnEliminar.classList.add("btn-red");
-          btnEliminar.onclick = () => eliminarFalta(falta.id);
-          tdAcciones.appendChild(btnEditar);
-          tdAcciones.appendChild(btnEliminar);
-          
-          tr.appendChild(tdDni);
-          tr.appendChild(tdNombre);
-          tr.appendChild(tdFecha);
-          tr.appendChild(tdObs);
-          tr.appendChild(tdAcciones);
-          tbody.appendChild(tr);
-        });
-      }
-      
-      /************** Función placeholder para verFoto() **************/
-      function verFoto(url) {
-        alert("URL de la foto: " + url);
       }
     </script>
   </body>
