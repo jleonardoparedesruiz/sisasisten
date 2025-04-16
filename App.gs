@@ -1,4 +1,6 @@
-/************** HTML PRINCIPAL **************/
+/**
+ * doGet: Retorna el HTML del login para iniciar el sistema.
+ */
 function doGet() {
   return HtmlService.createHtmlOutputFromFile("Login")
     .setTitle("Sistema de Asistencia SOLINPA");
@@ -142,19 +144,26 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
             ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
             : valorHora.toString().trim();
       
+      var tipo = fila[4] ? fila[4].toString().trim() : "";
+      var nombre = fila[1] ? fila[1].toString() : "";
+      var observaciones = fila[5] ? fila[5].toString() : "";
+      var ubicacion = fila[6] ? fila[6].toString() : "";
+      var lugar = fila[7] ? fila[7].toString() : "";
+      var linkImagen = fila[8] ? fila[8].toString() : "";
+      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
+      
       resultado.push({
         fecha: fechaStr,
         hora: horaStr,
-        tipo: fila[4] ? fila[4].toString().trim() : "",
-        nombre: fila[1] ? fila[1].toString() : "",
-        observaciones: fila[5] ? fila[5].toString() : "",
-        ubicacion: fila[6] ? fila[6].toString() : "",
-        lugar: fila[7] ? fila[7].toString() : "",
-        foto: fila[8] ? fila[8].toString() : "",
-        id: (fila.length >= 10 && fila[9]) ? fila[9].toString() : ""
+        tipo: tipo,
+        nombre: nombre,
+        observaciones: observaciones,
+        ubicacion: ubicacion,
+        lugar: lugar,
+        foto: linkImagen,
+        id: id
       });
     }
-    
     resultado.sort(function(a, b) {
       var compFecha = a.fecha.localeCompare(b.fecha);
       if (compFecha !== 0) return compFecha;
@@ -197,17 +206,24 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
       var tipoFila = fila[4] ? fila[4].toString().trim() : "";
       if (tipo && tipo.trim() !== "" && tipoFila !== tipo.trim()) continue;
       
+      var nombre = fila[1] ? fila[1].toString() : "";
+      var observaciones = fila[5] ? fila[5].toString() : "";
+      var ubicacion = fila[6] ? fila[6].toString() : "";
+      var lugar = fila[7] ? fila[7].toString() : "";
+      var linkImagen = fila[8] ? fila[8].toString() : "";
+      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
+      
       resultado.push({
         dni: dniFila,
         fecha: fechaStr,
         hora: horaStr,
         tipo: tipoFila,
-        nombre: fila[1] ? fila[1].toString() : "",
-        observaciones: fila[5] ? fila[5].toString() : "",
-        ubicacion: fila[6] ? fila[6].toString() : "",
-        lugar: fila[7] ? fila[7].toString() : "",
-        foto: fila[8] ? fila[8].toString() : "",
-        id: (fila.length >= 10 && fila[9]) ? fila[9].toString() : ""
+        nombre: nombre,
+        observaciones: observaciones,
+        ubicacion: ubicacion,
+        lugar: lugar,
+        foto: linkImagen,
+        id: id
       });
     }
     resultado.sort(function(a, b) {
@@ -229,6 +245,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     if (!usuario) {
       return { mensaje: "Usuario no autenticado." };
     }
+    
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
@@ -285,7 +302,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       }
     }
     
-    // Subir la imagen y generar URL directa usando el id del archivo.
+    // Subir la imagen y hacerla pública
     var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
     var blob = Utilities.newBlob(
       Utilities.base64Decode(imagenBase64),
@@ -294,11 +311,9 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     );
     var archivo = carpeta.createFile(blob);
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var fileId = archivo.getId();
-    var linkImagen = "https://drive.google.com/uc?export=download&id=" + fileId;
-
+    var linkImagen = archivo.getUrl();
     
-    // Registrar asistencia
+    // Registrar asistencia en BDregistros
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -311,7 +326,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       linkImagen
     ]);
     
-    // Registrar horas extra si aplica (para usuarios con horas extras activas y salida)
+    // Registrar horas extra si aplica
     if (horasExtrasActivas === 1 && tipoEvento === "Salida") {
       let ultimaEntrada = null;
       for (let i = 1; i < registros.length; i++) {
@@ -327,8 +342,8 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     
       let hojaHorarios = ss.getSheetByName("Horarios");
       let horarios = hojaHorarios.getDataRange().getValues();
-      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Viernes", "Sábado"];
-      let diaSemana = dias[now.getDay()] || "Sin horario";
+      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
+      let diaSemana = dias[now.getDay()];
       let horaSalidaProgramada = null;
       for (let i = 1; i < horarios.length; i++) {
         if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
@@ -356,7 +371,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       ]);
     }
     
-    // Determinar mensaje motivacional según el tipo y el horario
+    // Determinar mensaje motivacional
     let tipoFrase = "puntual";
     if (tipoEvento === "Salida") {
       tipoFrase = "salida";
@@ -557,6 +572,7 @@ function verificarEntradaSinSalida() {
       var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
             ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
             : valorFecha.toString().trim();
+  
       if (fechaFila !== fechaHoy) continue;
       var tipoFila = datos[i][4].toString().trim();
       if (tipoFila === "Entrada") {
@@ -905,7 +921,7 @@ function registrarFaltasAutomaticas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaUsuarios = ss.getSheetByName("Usuarios");
-    var hojaRegistros = ss.getSheetByName("BDregistros");
+    var hojaRegistros = ss.getSheetByName("BDregistros"); // Usamos BDregistros para guardar las faltas
     var usuarios = hojaUsuarios.getDataRange().getValues();
     var registros = hojaRegistros.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
@@ -926,7 +942,7 @@ function registrarFaltasAutomaticas() {
       }
     }
   
-    // Recorrer Usuarios y registrar falta para quienes no marcaron entrada hoy
+    // Recorrer Usuarios y registrar falta para quienes no marcaron entrada
     for (var i = 1; i < usuarios.length; i++) {
       var dniUsuario = usuarios[i][0].toString().trim();
       var nombreUsuario = usuarios[i][1] ? usuarios[i][1].toString().trim() : "";
@@ -1057,15 +1073,4 @@ function obtenerFaltasPorFechas(fechaInicio, fechaFin) {
     return { error: true, mensaje: "Error en obtenerFaltasPorFechas: " + error.message, faltas: [] };
   }
 }
-/**
- * Devuelve el contenido del archivo en Drive como una cadena Base64.
- */
-function getFotoBase64(fileId) {
-  try {
-    const blob = DriveApp.getFileById(fileId).getBlob();
-    return Utilities.base64Encode(blob.getBytes());
-  } catch (e) {
-    Logger.log("Error en getFotoBase64: " + e);
-    return null;
-  }
-}
+
