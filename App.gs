@@ -1,6 +1,4 @@
-/**
- * doGet: Retorna el HTML del login para iniciar el sistema.
- */
+/************** HTML PRINCIPAL **************/
 function doGet() {
   return HtmlService.createHtmlOutputFromFile("Login")
     .setTitle("Sistema de Asistencia SOLINPA");
@@ -144,26 +142,19 @@ function obtenerRegistrosUsuario(fechaInicio, fechaFin) {
             ? Utilities.formatDate(valorHora, timeZone, "HH:mm:ss")
             : valorHora.toString().trim();
       
-      var tipo = fila[4] ? fila[4].toString().trim() : "";
-      var nombre = fila[1] ? fila[1].toString() : "";
-      var observaciones = fila[5] ? fila[5].toString() : "";
-      var ubicacion = fila[6] ? fila[6].toString() : "";
-      var lugar = fila[7] ? fila[7].toString() : "";
-      var linkImagen = fila[8] ? fila[8].toString() : "";
-      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
-      
       resultado.push({
         fecha: fechaStr,
         hora: horaStr,
-        tipo: tipo,
-        nombre: nombre,
-        observaciones: observaciones,
-        ubicacion: ubicacion,
-        lugar: lugar,
-        foto: linkImagen,
-        id: id
+        tipo: fila[4] ? fila[4].toString().trim() : "",
+        nombre: fila[1] ? fila[1].toString() : "",
+        observaciones: fila[5] ? fila[5].toString() : "",
+        ubicacion: fila[6] ? fila[6].toString() : "",
+        lugar: fila[7] ? fila[7].toString() : "",
+        foto: fila[8] ? fila[8].toString() : "",
+        id: (fila.length >= 10 && fila[9]) ? fila[9].toString() : ""
       });
     }
+    
     resultado.sort(function(a, b) {
       var compFecha = a.fecha.localeCompare(b.fecha);
       if (compFecha !== 0) return compFecha;
@@ -186,7 +177,6 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
 
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
-      // Filtrar por DNI si se especifica (para admin, pasamos "" o null)
       var dniFila = fila[0].toString().trim();
       if (dni && dni.trim() !== "" && dniFila !== dni.trim()) continue;
       
@@ -207,24 +197,17 @@ function obtenerReporteIndividual(dni, fechaInicio, fechaFin, tipo) {
       var tipoFila = fila[4] ? fila[4].toString().trim() : "";
       if (tipo && tipo.trim() !== "" && tipoFila !== tipo.trim()) continue;
       
-      var nombre = fila[1] ? fila[1].toString() : "";
-      var observaciones = fila[5] ? fila[5].toString() : "";
-      var ubicacion = fila[6] ? fila[6].toString() : "";
-      var lugar = fila[7] ? fila[7].toString() : "";
-      var linkImagen = fila[8] ? fila[8].toString() : "";
-      var id = (fila.length >= 10 && fila[9]) ? fila[9].toString() : "";
-      
       resultado.push({
         dni: dniFila,
         fecha: fechaStr,
         hora: horaStr,
         tipo: tipoFila,
-        nombre: nombre,
-        observaciones: observaciones,
-        ubicacion: ubicacion,
-        lugar: lugar,
-        foto: linkImagen,
-        id: id
+        nombre: fila[1] ? fila[1].toString() : "",
+        observaciones: fila[5] ? fila[5].toString() : "",
+        ubicacion: fila[6] ? fila[6].toString() : "",
+        lugar: fila[7] ? fila[7].toString() : "",
+        foto: fila[8] ? fila[8].toString() : "",
+        id: (fila.length >= 10 && fila[9]) ? fila[9].toString() : ""
       });
     }
     resultado.sort(function(a, b) {
@@ -246,16 +229,15 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     if (!usuario) {
       return { mensaje: "Usuario no autenticado." };
     }
-
     if (!ubicacion || ubicacion === "No disponible" || ubicacion === "No soportado") {
       return { mensaje: "Registro geolocalizado obligatorio. Asegúrate de tener el GPS activado." };
     }
-
+    
     const validacion = obtenerValidacionHorario(tipoEvento);
     if (!validacion.permitido || validacion.permitido === false) {
       return { mensaje: validacion.mensaje };
     }
-
+    
     const lugar = verificarGeoballa(ubicacion);
     if (!lugar) {
       return { mensaje: "No se encontró ninguna zona geográfica autorizada para marcar." };
@@ -264,7 +246,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         mensaje: `Estás a ${Math.round(lugar.distancia)} metros de "${lugar.lugar}".\nRadio permitido: ${lugar.radio} m.\nNo puedes marcar asistencia.` 
       };
     }
-
+    
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaUsuarios = ss.getSheetByName("Usuarios");
     var hojaRegistros = ss.getSheetByName("BDregistros");
@@ -273,7 +255,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     var now = new Date();
     var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
     var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
-
+    
     let nombre = "Desconocido";
     let horasExtrasActivas = 0;
     const userTrimmed = usuario.trim();
@@ -284,7 +266,7 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         break;
       }
     }
-
+    
     // Evitar duplicar registros si el usuario no tiene horas extras
     var registros = hojaRegistros.getDataRange().getValues();
     if (horasExtrasActivas === 0) {
@@ -296,14 +278,14 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         let fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
               ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
               : valorFecha.toString().trim();
-
+    
         if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
           return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
         }
       }
     }
-
-    // Subir la imagen y hacerla pública
+    
+    // Subir la imagen y generar URL directa usando el id del archivo.
     var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
     var blob = Utilities.newBlob(
       Utilities.base64Decode(imagenBase64),
@@ -312,9 +294,11 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     );
     var archivo = carpeta.createFile(blob);
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var linkImagen = archivo.getUrl();
+    var fileId = archivo.getId();
+    var linkImagen = "https://drive.google.com/uc?export=download&id=" + fileId;
 
-    // Registrar asistencia en BDregistros
+    
+    // Registrar asistencia
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -326,8 +310,8 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       lugar.lugar,
       linkImagen
     ]);
-
-    // Registrar horas extra si aplica
+    
+    // Registrar horas extra si aplica (para usuarios con horas extras activas y salida)
     if (horasExtrasActivas === 1 && tipoEvento === "Salida") {
       let ultimaEntrada = null;
       for (let i = 1; i < registros.length; i++) {
@@ -340,11 +324,11 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       let entradaDate = new Date(fechaHoy + " " + horaEntrada);
       let salidaDate = new Date(fechaHoy + " " + horaAhora);
       let horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
-
+    
       let hojaHorarios = ss.getSheetByName("Horarios");
       let horarios = hojaHorarios.getDataRange().getValues();
-      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
-      let diaSemana = dias[now.getDay()];
+      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Viernes", "Sábado"];
+      let diaSemana = dias[now.getDay()] || "Sin horario";
       let horaSalidaProgramada = null;
       for (let i = 1; i < horarios.length; i++) {
         if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
@@ -371,8 +355,8 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         ""
       ]);
     }
-
-    // Determinar mensaje motivacional
+    
+    // Determinar mensaje motivacional según el tipo y el horario
     let tipoFrase = "puntual";
     if (tipoEvento === "Salida") {
       tipoFrase = "salida";
@@ -418,7 +402,7 @@ function guardarUsuarioEnHoja(userObj) {
     var datos = hojaUsuarios.getDataRange().getValues();
     var userTrimmed = userObj.dni.toString().trim();
     var filaEncontrada = -1;
-
+  
     for (var i = 1; i < datos.length; i++) {
       if (datos[i][0].toString().trim() === userTrimmed) {
         filaEncontrada = i;
@@ -462,7 +446,7 @@ function obtenerListaUsuarios() {
     var hoja = ss.getSheetByName("Usuarios");
     var datos = hoja.getDataRange().getValues();
     var lista = [];
-
+  
     for (var i = 1; i < datos.length; i++) {
       var row = datos[i];
       if (row[0]) {
@@ -491,7 +475,7 @@ function eliminarUsuario(dni) {
     var hoja = ss.getSheetByName("Usuarios");
     var datos = hoja.getDataRange().getValues();
     var dniTrimmed = dni.toString().trim();
-
+  
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       if (dniFila === dniTrimmed) {
@@ -514,7 +498,7 @@ function obtenerEstadisticas() {
     var datos = hojaRegistros.getDataRange().getValues();
     var totalRegistros = 0, totalEntradas = 0, totalSalidas = 0;
     var registrosPorUsuario = {};
-
+  
     for (var i = 1; i < datos.length; i++) {
       if (!datos[i][0]) continue;
       totalRegistros++;
@@ -565,7 +549,7 @@ function verificarEntradaSinSalida() {
     var timeZone = ss.getSpreadsheetTimeZone();
     var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
     var entradaEncontrada = false;
-
+  
     for (var i = 1; i < datos.length; i++) {
       var dniFila = datos[i][0].toString().trim();
       if (dniFila !== usuario.trim()) continue;
@@ -573,7 +557,6 @@ function verificarEntradaSinSalida() {
       var fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
             ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
             : valorFecha.toString().trim();
-
       if (fechaFila !== fechaHoy) continue;
       var tipoFila = datos[i][4].toString().trim();
       if (tipoFila === "Entrada") {
@@ -597,15 +580,15 @@ function verificarGeoballa(ubicacion) {
     var latUser = parseFloat(parts[0].trim());
     var lngUser = parseFloat(parts[1].trim());
     if (isNaN(latUser) || isNaN(lngUser)) return null;
-
+  
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var geoSheet = ss.getSheetByName("geoballa");
     if (!geoSheet) return null;
-
+  
     var data = geoSheet.getDataRange().getValues();
     var geoballaMasCercana = null;
     var distanciaMinima = Infinity;
-
+  
     for (var i = 1; i < data.length; i++) {
       var lugar = data[i][0];
       var ubicacionGeo = data[i][1];
@@ -617,7 +600,7 @@ function verificarGeoballa(ubicacion) {
       if (isNaN(latGeo) || isNaN(lngGeo)) continue;
       var distancia = calcularDistancia(latUser, lngUser, latGeo, lngGeo);
       Logger.log("🛰️ Revisando " + lugar + " - Distancia: " + distancia + " m | Radio: " + radio + " m");
-
+  
       if (distancia <= radio) {
         return {
           lugar: lugar,
@@ -653,6 +636,7 @@ function calcularDistancia(lat1, lng1, lat2, lng2) {
   var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+
 function toRad(value) {
   return value * Math.PI / 180;
 }
@@ -692,7 +676,7 @@ function eliminarGeoballa(lugar) {
     var hoja = ss.getSheetByName("geoballa");
     var data = hoja.getDataRange().getValues();
     var lugarTrimmed = lugar.toString().trim();
-
+  
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] && data[i][0].toString().trim() === lugarTrimmed) {
         hoja.deleteRow(i + 1);
@@ -712,7 +696,7 @@ function obtenerGeoballas() {
     var hoja = ss.getSheetByName("geoballa");
     var data = hoja.getDataRange().getValues();
     var geoballas = [];
-
+  
     for (var i = 1; i < data.length; i++) {
       if (data[i][0]) {
         geoballas.push({
@@ -729,6 +713,7 @@ function obtenerGeoballas() {
   }
 }
 
+/************** VALIDACIÓN DE HORARIO Y FRASES **************/
 function validarHorario(tipoEvento) {
   try {
     const usuario = PropertiesService.getUserProperties().getProperty("usuarioActivo");
@@ -752,7 +737,7 @@ function obtenerValidacionHorario(tipoEvento) {
   const diaSemana = dias[now.getDay()];
   let horaPermitida = null;
   let toleranciaMin = 0;
-
+  
   for (let i = 1; i < horarios.length; i++) {
     if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
       if (tipoEvento === "Entrada") {
@@ -774,7 +759,7 @@ function obtenerValidacionHorario(tipoEvento) {
   const [h, m] = horaPermitida.toString().split(":");
   const horaEsperada = parseInt(h) + ((parseInt(m) || 0) / 60);
   const horaLimite = horaEsperada + (toleranciaMin / 60);
-
+  
   if (tipoEvento === "Entrada") {
     const margenAnticipado = 15 / 60;
     const horaMinima = horaEsperada - margenAnticipado;
@@ -812,12 +797,12 @@ function obtenerFraseMotivacional(tipoFrase) {
     const idxFrase = encabezado.indexOf("Frase");
     const idxTipo = encabezado.indexOf("Tipo");
     if (idxFrase === -1 || idxTipo === -1) return "¡Buen trabajo!";
-
+    
     const frasesFiltradas = datos.slice(1).filter(fila =>
       fila[idxFrase] && fila[idxTipo] &&
       fila[idxTipo].toString().toLowerCase() === tipoFrase.toLowerCase()
     ).map(fila => fila[idxFrase]);
-
+    
     if (frasesFiltradas.length === 0) return "¡Buen trabajo!";
     const index = Math.floor(Math.random() * frasesFiltradas.length);
     return frasesFiltradas[index];
@@ -852,7 +837,7 @@ function guardarRegistroManual(registro) {
     var timeZone = ss.getSpreadsheetTimeZone();
     var fecha = registro.fecha || Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
     var regId = Utilities.getUuid();
-
+  
     hoja.appendRow([
       registro.dni,
       registro.nombre,
@@ -863,7 +848,7 @@ function guardarRegistroManual(registro) {
       registro.ubicacion,
       registro.lugar,
       "", // Link Imagen vacío
-      regId  // Columna para el ID
+      regId
     ]);
     return { mensaje: "Registro manual guardado correctamente." };
   } catch (error) {
@@ -877,7 +862,7 @@ function eliminarRegistroManual(regId) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName("BDregistros");
     var data = hoja.getDataRange().getValues();
-
+  
     for (var i = 1; i < data.length; i++) {
       if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === regId) {
         hoja.deleteRow(i + 1);
@@ -897,7 +882,7 @@ function actualizarRegistroManual(registroEditado) {
     var hoja = ss.getSheetByName("BDregistros");
     var data = hoja.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
-
+  
     for (var i = 1; i < data.length; i++) {
       if (data[i].length >= 10 && data[i][9] && data[i][9].toString() === registroEditado.id) {
         hoja.getRange(i + 1, 4).setValue(registroEditado.hora);
@@ -916,17 +901,16 @@ function actualizarRegistroManual(registroEditado) {
 }
 
 /************** REGISTRO DE FALTAS **************/
-// Actualizamos la función para que registre las faltas en BDregistros
 function registrarFaltasAutomaticas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hojaUsuarios = ss.getSheetByName("Usuarios");
-    var hojaRegistros = ss.getSheetByName("BDregistros"); // Usamos BDregistros para guardar las faltas
+    var hojaRegistros = ss.getSheetByName("BDregistros");
     var usuarios = hojaUsuarios.getDataRange().getValues();
     var registros = hojaRegistros.getDataRange().getValues();
     var timeZone = ss.getSpreadsheetTimeZone();
     var fechaHoy = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd");
-
+  
     // Objeto para saber quién registró entrada hoy
     var marcadosHoy = {};
     for (var i = 1; i < registros.length; i++) {
@@ -936,17 +920,17 @@ function registrarFaltasAutomaticas() {
           ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
           : valorFecha.toString().trim();
       var tipo = registros[i][4].toString().trim();
-
+  
       if (fechaRegistro === fechaHoy && tipo === "Entrada") {
         marcadosHoy[dni] = true;
       }
     }
-
-    // Recorrer Usuarios y registrar falta para quienes no marcaron entrada
+  
+    // Recorrer Usuarios y registrar falta para quienes no marcaron entrada hoy
     for (var i = 1; i < usuarios.length; i++) {
       var dniUsuario = usuarios[i][0].toString().trim();
       var nombreUsuario = usuarios[i][1] ? usuarios[i][1].toString().trim() : "";
-
+  
       if (!marcadosHoy[dniUsuario]) {
         var existeFalta = false;
         for (var j = 1; j < registros.length; j++) {
@@ -962,7 +946,6 @@ function registrarFaltasAutomaticas() {
         }
         if (!existeFalta) {
           var horaActual = Utilities.formatDate(new Date(), timeZone, "HH:mm:ss");
-          // Registrar la falta en BDregistros con Tipo "Falta" y Observaciones "falto por"
           hojaRegistros.appendRow([
             dniUsuario,
             nombreUsuario,
@@ -984,14 +967,13 @@ function registrarFaltasAutomaticas() {
   }
 }
 
-// Actualizamos las funciones para obtener las faltas desde BDregistros
 function obtenerFaltas() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName("BDregistros");
     var datos = hoja.getDataRange().getValues();
     var faltas = [];
-
+  
     for (var i = 1; i < datos.length; i++) {
       var fila = datos[i];
       var tipoFila = fila[4] ? fila[4].toString().trim() : "";
@@ -1073,5 +1055,17 @@ function obtenerFaltasPorFechas(fechaInicio, fechaFin) {
   } catch (error) {
     Logger.log("Error en obtenerFaltasPorFechas: " + error);
     return { error: true, mensaje: "Error en obtenerFaltasPorFechas: " + error.message, faltas: [] };
+  }
+}
+/**
+ * Devuelve el contenido del archivo en Drive como una cadena Base64.
+ */
+function getFotoBase64(fileId) {
+  try {
+    const blob = DriveApp.getFileById(fileId).getBlob();
+    return Utilities.base64Encode(blob.getBytes());
+  } catch (e) {
+    Logger.log("Error en getFotoBase64: " + e);
+    return null;
   }
 }
