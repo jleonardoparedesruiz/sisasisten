@@ -1298,6 +1298,7 @@
         <div class="input-group">
           <label for="addTipo">Tipo:</label>
           <select id="addTipo">
+            <option value="Falta">Falta</option>
             <option value="Entrada">Entrada</option>
             <option value="Salida">Salida</option>
           </select>
@@ -2511,25 +2512,64 @@
         link.click();
       }
       
-      /************** Funciones para el Modal de Añadir Registro **************/
-      function mostrarModalAddRegistro() {
-        const now = new Date();
-        let hora = now.toTimeString().slice(0,5);
-        document.getElementById("addHora").value = hora;
-        document.getElementById("addObs").value = "";
-        if (geoballasList.length > 0) {
-          document.getElementById("addLugarSelect").value = geoballasList[0].lugar;
-          document.getElementById("addUbicacion").value = geoballasList[0].ubicacion;
-        }
-        document.getElementById("addDNI").value = "";
-        document.getElementById("addNombre").value = "";
-        document.getElementById("modalAddRegistro").style.display = "block";
+/************** Funciones para el Modal de Añadir Registro **************/
+function mostrarModalAddRegistro() {
+  // 1) Inicializa los campos «in situ»
+  const now = new Date();
+  document.getElementById("addHora").value   = now.toTimeString().slice(0,5);
+  document.getElementById("addObs").value    = "";
+  document.getElementById("addDNI").value    = "";
+  document.getElementById("addNombre").value = "";
+  document.getElementById("addTipo").value   = "Falta";
+
+  // 2) Pide la lista de geoballas al servidor
+  google.script.run
+    .withFailureHandler(err => showFancyAlert("No se pudieron cargar los lugares:\n"+ err.message))
+    .withSuccessHandler(lista => {
+      // 3) Guarda y dibuja el <select>
+      geoballasList = lista;
+      cargarGeoballasEnSelect("addLugarSelect");
+
+      // 4) Preselecciona la primera opción y actualiza la ubicación
+      if (geoballasList.length > 0) {
+        const primero = geoballasList[0];
+        document.getElementById("addLugarSelect").value   = primero.lugar;
+        document.getElementById("addUbicacion").value    = primero.ubicacion;
       }
-      
-      function cerrarModalAddRegistro() {
-        document.getElementById("modalAddRegistro").style.display = "none";
-      }
-      
+
+      // 5) Cuando el usuario cambie el lugar, actualiza la ubicación oculta
+      const sel = document.getElementById("addLugarSelect");
+      sel.onchange = () => {
+        const geo = geoballasList.find(g => g.lugar === sel.value);
+        if (geo) document.getElementById("addUbicacion").value = geo.ubicacion;
+      };
+
+      // 6) ¡Y ahora SÍ! muestra el modal
+      document.getElementById("modalAddRegistro").style.display = "block";
+    })
+    .obtenerGeoballas();  // nombre de tu función server-side
+}
+
+function cerrarModalAddRegistro() {
+  document.getElementById("modalAddRegistro").style.display = "none";
+}
+
+/************** Auto‑completar Nombre según DNI de 8 dígitos **************/
+document.getElementById("addDNI")
+  .addEventListener("input", function() {
+    const dni = this.value.trim();
+    // sólo llamamos al servidor si ya hay 8 dígitos
+    if (/^\d{8}$/.test(dni)) {
+      google.script.run
+        .withSuccessHandler(function(nombre) {
+          document.getElementById("addNombre").value = nombre || "";
+        })
+        .obtenerNombrePorDNI(dni);
+    } else {
+      document.getElementById("addNombre").value = "";
+    }
+  });
+  
       /************** Funciones para Editar Registro (Modal) **************/
       function editarRegistroManual(registro) {
         document.getElementById("editRegId").value = registro.id || "";
@@ -2742,25 +2782,6 @@
         link.href = URL.createObjectURL(blob);
         link.download = "reporte_individual.csv";
         link.click();
-      }
-      
-      /************** Funciones para el Modal de Añadir Registro **************/
-      function mostrarModalAddRegistro() {
-        const now = new Date();
-        let hora = now.toTimeString().slice(0,5);
-        document.getElementById("addHora").value = hora;
-        document.getElementById("addObs").value = "";
-        if (geoballasList.length > 0) {
-          document.getElementById("addLugarSelect").value = geoballasList[0].lugar;
-          document.getElementById("addUbicacion").value = geoballasList[0].ubicacion;
-        }
-        document.getElementById("addDNI").value = "";
-        document.getElementById("addNombre").value = "";
-        document.getElementById("modalAddRegistro").style.display = "block";
-      }
-      
-      function cerrarModalAddRegistro() {
-        document.getElementById("modalAddRegistro").style.display = "none";
       }
       
       /************** Funciones de Fancy Alert y Fancy Confirm **************/
@@ -3148,7 +3169,7 @@ function cerrarModalFoto() {
         link.href = URL.createObjectURL(blob);
         link.download = "reporte_individual.csv";
         link.click();
-      }
+      }    
     </script>
   </body>
 </html>
