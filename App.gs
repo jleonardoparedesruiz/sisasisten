@@ -1095,5 +1095,3 @@ function getFotoBase64(fileId) {
     return null;
   }
 }
-
-
