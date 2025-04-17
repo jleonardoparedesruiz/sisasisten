@@ -16,6 +16,12 @@
         min-height: 100vh;
         background: linear-gradient(to right, #ece9e6, #ffffff);
       }
+      .form-usuarios select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         display: flex;
@@ -1054,14 +1060,21 @@
                 <label for="contrasenaUsuario">Contraseña</label>
                 <input type="text" id="contrasenaUsuario" placeholder="8 dígitos numéricos" pattern="^\d{8}$">
               </div>
-              <div style="flex:1; min-width:100px;">
-                <label for="nivel">Nivel</label>
-                <input type="number" id="nivel" placeholder="0 o 1">
-              </div>
-              <div style="flex:1; min-width:120px;">
-                <label for="horasExtras">HorasExtras</label>
-                <input type="number" id="horasExtras" placeholder="0 o 1">
-              </div>
+<div style="flex:1; min-width:100px;">
+  <label for="nivel">Nivel</label>
+  <select id="nivel">
+    <option value="1">Sí</option>
+    <option value="0">No</option>
+  </select>
+</div>
+<div style="flex:1; min-width:120px;">
+  <label for="horasExtras">Horas Extras</label>
+  <select id="horasExtras">
+    <option value="1">Sí</option>
+    <option value="0">No</option>
+  </select>
+</div>
+
             </div>
             <div class="actions-usuarios">
               <button class="btn-clean" onclick="limpiarFormulario()">
@@ -3139,6 +3152,3 @@ function cerrarModalFoto() {
     </script>
   </body>
 </html>
-
-
-
