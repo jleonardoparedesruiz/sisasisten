@@ -30,6 +30,7 @@
         align-items: center;
         text-align: center;
       }
+      
       .container {
         max-width: 1100px;
         margin: 0 auto;
@@ -3169,7 +3170,42 @@ function cerrarModalFoto() {
         link.href = URL.createObjectURL(blob);
         link.download = "reporte_individual.csv";
         link.click();
-      }    
+      }
+
+function guardarRegistroManual() {
+  const dni           = document.getElementById("addDNI").value.trim();
+  const nombre        = document.getElementById("addNombre").value.trim();
+  const tipo          = document.getElementById("addTipo").value;
+  const hora          = document.getElementById("addHora").value.trim();
+  const observaciones = document.getElementById("addObs").value.trim();
+  const lugar         = document.getElementById("addLugarSelect").value;
+  const ubicacion     = document.getElementById("addUbicacion").value;
+  
+  if (!dni || !nombre || !tipo || !hora || !lugar) {
+    showFancyAlert("Por favor completa todos los campos obligatorios.");
+    return;
+  }
+
+  const registro = { dni, nombre, tipo, hora, observaciones, lugar, ubicacion };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      showFancyAlert(res.mensaje || "✅ Registro guardado correctamente.");
+      cerrarModalAddRegistro();
+      actualizarTablaGeneral();
+    })
+    .withFailureHandler(err => {
+      showFancyAlert("❌ Error al guardar: " + err.message);
+    })
+    .guardarRegistroManual(registro);
+}
+// ————— Recarga sólo la tabla de Reporte General —————
+function actualizarTablaGeneral() {
+  // Si estamos viendo Reporte General, vuelve a filtrar
+  if (document.getElementById("reporteGeneralSection").style.display === "block") {
+    filtrarReporteGeneral();
+  }
+}
     </script>
   </body>
 </html>
