@@ -264,37 +264,39 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       };
     }
     
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var hojaUsuarios = ss.getSheetByName("Usuarios");
-    var hojaRegistros = ss.getSheetByName("BDregistros");
-    var datosUsuarios = hojaUsuarios.getDataRange().getValues();
-    var timeZone = ss.getSpreadsheetTimeZone();
-    var now = new Date();
-    var fechaHoy = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
-    var horaAhora = Utilities.formatDate(now, timeZone, "HH:mm:ss");
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaUsuarios  = ss.getSheetByName("Usuarios");
+    const hojaRegistros = ss.getSheetByName("BDregistros");
+    const datosUsuarios = hojaUsuarios.getDataRange().getValues();
+    const timeZone      = ss.getSpreadsheetTimeZone();
+    const now           = new Date();
+    const fechaHoy      = Utilities.formatDate(now, timeZone, "yyyy-MM-dd");
+    const horaAhora     = Utilities.formatDate(now, timeZone, "HH:mm:ss");
     
-    let nombre = "Desconocido";
+    let nombre            = "Desconocido";
     let horasExtrasActivas = 0;
-    const userTrimmed = usuario.trim();
+    const userTrimmed     = usuario.trim();
+    
+    // Buscar nombre y horasExtras en Usuarios
     for (let i = 1; i < datosUsuarios.length; i++) {
       if (datosUsuarios[i][0].toString().trim() === userTrimmed) {
-        nombre = datosUsuarios[i][1];
+        nombre            = datosUsuarios[i][1];
         horasExtrasActivas = Number(datosUsuarios[i][7]) || 0;
         break;
       }
     }
     
-    // Evitar duplicar registros si el usuario no tiene horas extras
-    var registros = hojaRegistros.getDataRange().getValues();
+    // Evitar duplicados si no hay horas extras
+    const registros = hojaRegistros.getDataRange().getValues();
     if (horasExtrasActivas === 0) {
       for (let i = 1; i < registros.length; i++) {
-        let fila = registros[i];
-        let dniFila = fila[0].toString().trim();
-        let tipoFila = fila[4].toString().trim();
-        let valorFecha = fila[2];
-        let fechaFila = (valorFecha instanceof Date && !isNaN(valorFecha))
-              ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
-              : valorFecha.toString().trim();
+        const fila     = registros[i];
+        const dniFila  = fila[0].toString().trim();
+        const tipoFila = fila[4].toString().trim();
+        const valorFecha = fila[2];
+        const fechaFila  = (valorFecha instanceof Date && !isNaN(valorFecha))
+          ? Utilities.formatDate(valorFecha, timeZone, "yyyy-MM-dd")
+          : valorFecha.toString().trim();
     
         if (dniFila === userTrimmed && fechaFila === fechaHoy && tipoFila === tipoEvento) {
           return { mensaje: `Ya has registrado ${tipoEvento} hoy.` };
@@ -302,18 +304,23 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       }
     }
     
-    // Subir la imagen y hacerla pública
-    var carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
-    var blob = Utilities.newBlob(
+    // *** Subir la imagen y generar enlace directo al JPEG ***
+    const carpeta = DriveApp.getFolderById("1fhycG_U-hatF-VqPmxEhD4JEhl2MCgWv");
+    const blob    = Utilities.newBlob(
       Utilities.base64Decode(imagenBase64),
       MimeType.JPEG,
       `${userTrimmed}_${fechaHoy}_${horaAhora}.jpg`
     );
-    var archivo = carpeta.createFile(blob);
+    const archivo = carpeta.createFile(blob);
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var linkImagen = archivo.getUrl();
     
-    // Registrar asistencia en BDregistros
+    // Usar export=download para que <img> cargue directamente
+    var fileId     = archivo.getId();
+    var linkImagen = "https://drive.google.com/uc?export=download&id=" + fileId;
+
+
+    
+    // Registrar fila en BDregistros
     hojaRegistros.appendRow([
       userTrimmed,
       nombre,
@@ -330,35 +337,38 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
     if (horasExtrasActivas === 1 && tipoEvento === "Salida") {
       let ultimaEntrada = null;
       for (let i = 1; i < registros.length; i++) {
-        let fila = registros[i];
+        const fila = registros[i];
         if (fila[0].toString().trim() === userTrimmed && fila[4].toString().trim() === "Entrada") {
           ultimaEntrada = fila;
         }
       }
-      let horaEntrada = ultimaEntrada ? ultimaEntrada[3] : horaAhora;
-      let entradaDate = new Date(fechaHoy + " " + horaEntrada);
-      let salidaDate = new Date(fechaHoy + " " + horaAhora);
-      let horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
+      const horaEntrada     = ultimaEntrada ? ultimaEntrada[3] : horaAhora;
+      const entradaDate     = new Date(fechaHoy + " " + horaEntrada);
+      const salidaDate      = new Date(fechaHoy + " " + horaAhora);
+      const horasTrabajadas = (salidaDate - entradaDate) / (1000 * 60 * 60);
     
-      let hojaHorarios = ss.getSheetByName("Horarios");
-      let horarios = hojaHorarios.getDataRange().getValues();
-      let dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
-      let diaSemana = dias[now.getDay()];
-      let horaSalidaProgramada = null;
+      const hojaHorarios          = ss.getSheetByName("Horarios");
+      const horarios              = hojaHorarios.getDataRange().getValues();
+      const dias                  = ["Domingo","Lunes","Martes","Miercoles","Jueves","Viernes","Sábado"];
+      const diaSemana             = dias[now.getDay()];
+      let horaSalidaProgramada    = null;
+    
       for (let i = 1; i < horarios.length; i++) {
         if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
           horaSalidaProgramada = horarios[i][2];
           break;
         }
       }
+    
       let horasExtra = 0;
       if (horaSalidaProgramada) {
-        let salidaProgramadaDate = new Date(fechaHoy + " " + horaSalidaProgramada);
-        if (salidaDate > salidaProgramadaDate) {
-          horasExtra = (salidaDate - salidaProgramadaDate) / (1000 * 60 * 60);
+        const salidaProgDate = new Date(fechaHoy + " " + horaSalidaProgramada);
+        if (salidaDate > salidaProgDate) {
+          horasExtra = (salidaDate - salidaProgDate) / (1000 * 60 * 60);
         }
       }
-      let hojaHorasExtra = ss.getSheetByName("HorasExtra");
+    
+      const hojaHorasExtra = ss.getSheetByName("HorasExtra");
       hojaHorasExtra.appendRow([
         userTrimmed,
         nombre,
@@ -371,31 +381,30 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
       ]);
     }
     
-    // Determinar mensaje motivacional
-    let tipoFrase = "puntual";
-    if (tipoEvento === "Salida") {
-      tipoFrase = "salida";
-    } else if (tipoEvento === "Entrada") {
-      let hojaHorarios = ss.getSheetByName("Horarios");
-      let horarios = hojaHorarios.getDataRange().getValues();
-      let dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-      let diaSemana = dias[now.getDay()];
-      for (let i = 1; i < horarios.length; i++) {
-        if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
-          let horaIngreso = horarios[i][1];
-          let toleranciaMin = parseInt(horarios[i][5]) || 0;
-          let horaEsperada = new Date(now);
-          let [h, m] = horaIngreso.toString().split(":");
-          horaEsperada.setHours(parseInt(h), parseInt(m), 0, 0);
-          let limite = new Date(horaEsperada.getTime() + toleranciaMin * 60000);
-          if (now > limite) {
-            tipoFrase = "tarde";
-          }
+    // Mensaje motivacional
+    let tipoFrase = tipoEvento === "Salida" ? "salida" : "puntual";
+    if (tipoEvento === "Entrada") {
+      const hojaHor = ss.getSheetByName("Horarios");
+      const hrs     = hojaHor.getDataRange().getValues();
+      const diasArr = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+      const dia     = diasArr[now.getDay()];
+      let horaIng;
+      let tolMin = 0;
+      for (let i = 1; i < hrs.length; i++) {
+        if (hrs[i][0].toString().toLowerCase() === dia.toLowerCase()) {
+          horaIng = hrs[i][1];
+          tolMin  = parseInt(hrs[i][5])||0;
           break;
         }
       }
+      if (horaIng) {
+        const [h,m]        = horaIng.split(":").map(Number);
+        const límiteTarde  = new Date(now).setHours(h, m + tolMin, 0, 0);
+        if (now.getTime() > límiteTarde) tipoFrase = "tarde";
+      }
     }
-    let frase = obtenerFraseMotivacional(tipoFrase);
+    const frase = obtenerFraseMotivacional(tipoFrase);
+    
     return {
       mensaje: `✅ Se registró su ${tipoEvento.toLowerCase()} en: ${lugar.lugar}.\n${frase}`,
       evento: tipoEvento,
@@ -1073,4 +1082,18 @@ function obtenerFaltasPorFechas(fechaInicio, fechaFin) {
     return { error: true, mensaje: "Error en obtenerFaltasPorFechas: " + error.message, faltas: [] };
   }
 }
+
+/**
+ * Devuelve el contenido del archivo en Drive como una cadena Base64.
+ */
+function getFotoBase64(fileId) {
+  try {
+    const blob = DriveApp.getFileById(fileId).getBlob();
+    return Utilities.base64Encode(blob.getBytes());
+  } catch (e) {
+    Logger.log("Error en getFotoBase64: " + e);
+    return null;
+  }
+}
+
 
