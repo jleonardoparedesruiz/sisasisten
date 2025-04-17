@@ -816,34 +816,50 @@
       /* ==============================
          NUEVO: Modal para visualizar Foto con Loader
          ============================== */
-      #modalFoto {
-        display: none;
-        position: fixed;
-        z-index: 21000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-      }
-      #modalFoto .modal-content {
-        background: #fff;
-        margin: 10% auto;
-        padding: 20px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 600px;
-        text-align: center;
-        position: relative;
-      }
-      #modalFoto .modal-content span.close {
-        position: absolute;
-        top: 10px;
-        right: 20px;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-      }
+      /* Modal overlay */
+#modalFoto {
+  display: none;
+  position: fixed;
+  z-index: 21000;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Contenido del modal */
+#modalFoto .modal-content {
+  background: #fff;
+  margin: 5% auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;       /* hasta el 80% de la altura de la ventana */
+  overflow-y: auto;       /* scroll interno si hace falta */
+  text-align: center;
+  position: relative;
+}
+
+/* Imagen dentro del modal */
+#modalFoto .modal-content img {
+  display: block;
+  margin: 0 auto;
+  width: auto;
+  max-width: 100%;        /* nunca más ancho que el modal */
+  max-height: 60vh;       /* nunca más alto que 60% del viewport */
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* Botón cerrar */
+#modalFoto .modal-content span.close {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
       /* ==============================
          Responsive
          ============================== */
@@ -1391,7 +1407,7 @@
         <span class="close" onclick="cerrarModalFoto()">&times;</span>
         <h3>Foto de Asistencia</h3>
         <div id="loaderFoto" style="font-weight:bold; margin:15px 0; color:#e53935;">Cargando...</div>
-        <img id="imgModal" src="" alt="Foto de asistencia" style="display:none; width:100%; max-height:500px; object-fit:contain; border-radius:10px;">
+        <img id="imgModal" src="" alt="Foto de asistencia" style="display:none; object-fit:contain; border-radius:10px;">
         <div style="margin-top:10px;">
           <button class="btn-gray" onclick="cerrarModalFoto()">Cerrar</button>
         </div>
@@ -2768,29 +2784,82 @@
         };
       }
       
-      /************** NUEVA FUNCIONALIDAD: Modal para Visualizar Foto **************/
-      // Función que muestra el modal con "Cargando..." y, cuando la imagen se descarga, la muestra.
-      function verFoto(url) {
-        const modal = document.getElementById("modalFoto");
-        const loader = document.getElementById("loaderFoto");
-        const img = document.getElementById("imgModal");
-        modal.style.display = "block";
-        loader.style.display = "block";
-        img.style.display = "none";
-        img.onload = function() {
-          loader.style.display = "none";
-          img.style.display = "block";
-        };
-        img.src = url;
+
+/************** FUNCIONES PARA VISUALIZAR FOTO (FINAL) **************/
+/************** FUNCIONES PARA VISUALIZAR FOTO (CON PROXY) **************/
+function verFoto(url) {
+  const modal  = document.getElementById("modalFoto");
+  const loader = document.getElementById("loaderFoto");
+  const img    = document.getElementById("imgModal");
+
+  // muestra modal + loader
+  modal.style.display  = "flex";
+  loader.style.display = "block";
+  img.style.display    = "none";
+
+  // extrae el ID del parámetro id=XXX
+  const match = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (!match) {
+    loader.style.display = "none";
+    showFancyAlert("ID de archivo inválido.");
+    return;
+  }
+  const fileId = match[1];
+
+  // pide al servidor el Base64
+  google.script.run
+    .withSuccessHandler(function(b64) {
+      if (!b64) {
+        loader.style.display = "none";
+        showFancyAlert("No se pudo obtener la foto.");
+        return;
       }
-      
-      function cerrarModalFoto() {
-        const modal = document.getElementById("modalFoto");
-        const img = document.getElementById("imgModal");
-        modal.style.display = "none";
-        img.src = "";
-      }
-      
+      img.onload = function() {
+        loader.style.display = "none";
+        img.style.display    = "block";
+      };
+      img.onerror = function() {
+        loader.style.display = "none";
+        showFancyAlert("Error al mostrar la foto.");
+      };
+      // monta el data URI
+      img.src = "data:image/jpeg;base64," + b64;
+    })
+    .withFailureHandler(function(err) {
+      loader.style.display = "none";
+      showFancyAlert("Error al cargar la foto: " + err.message);
+    })
+    .getFotoBase64(fileId);
+}
+
+function cerrarModalFoto() {
+  const modal = document.getElementById("modalFoto");
+  const img   = document.getElementById("imgModal");
+
+  // Quitamos los handlers para que al limpiar src no dispare onerror
+  img.onload  = null;
+  img.onerror = null;
+
+  // Cerramos el modal y limpiamos la imagen
+  modal.style.display = "none";
+  img.src            = "";
+}
+
+
+
+
+
+function cerrarModalFoto() {
+  const modal = document.getElementById("modalFoto");
+  const img   = document.getElementById("imgModal");
+  img.onload  = null;
+  img.onerror = null;
+  modal.style.display = "none";
+  img.src             = "";
+}
+
+
+    
       /************** ESTADÍSTICAS Y REPORTES **************/
       function mostrarEstadisticas() {
         document.getElementById("adminPanel").classList.remove("hidden");
@@ -3041,27 +3110,6 @@
         });
       }
       
-      /************** Nuevo Modal: Visualizar Foto con Loader **************/
-      function verFoto(url) {
-        const modal = document.getElementById("modalFoto");
-        const loader = document.getElementById("loaderFoto");
-        const img = document.getElementById("imgModal");
-        modal.style.display = "block";
-        loader.style.display = "block";
-        img.style.display = "none";
-        img.onload = function() {
-          loader.style.display = "none";
-          img.style.display = "block";
-        };
-        img.src = url;
-      }
-      
-      function cerrarModalFoto() {
-        const modal = document.getElementById("modalFoto");
-        const img = document.getElementById("imgModal");
-        modal.style.display = "none";
-        img.src = "";
-      }
       
       /************** EXPORTAR REPORTE INDIVIDUAL **************/
       function exportarReporteIndividual() {
