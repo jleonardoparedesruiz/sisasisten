@@ -398,10 +398,22 @@ function subirYRegistrarAsistencia(imagenBase64, ubicacion, tipoEvento) {
         }
       }
       if (horaIng) {
-        const [h,m]        = horaIng.split(":").map(Number);
-        const límiteTarde  = new Date(now).setHours(h, m + tolMin, 0, 0);
-        if (now.getTime() > límiteTarde) tipoFrase = "tarde";
-      }
+  if (horaIng instanceof Date) {
+    horaIng = Utilities.formatDate(horaIng, Session.getScriptTimeZone(), "HH:mm");
+  } else if (typeof horaIng === "number") {
+    const totalMinutes = Math.round(horaIng * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    horaIng = Utilities.formatString("%02d:%02d", hours, minutes);
+  } else if (typeof horaIng !== "string") {
+    horaIng = "00:00";
+  }
+
+  const [h, m] = horaIng.split(":").map(Number);
+  const límiteTarde = new Date(now).setHours(h, m + tolMin, 0, 0);
+  if (now.getTime() > límiteTarde) tipoFrase = "tarde";
+}
+
     }
     const frase = obtenerFraseMotivacional(tipoFrase);
     
@@ -561,6 +573,7 @@ function cerrarSesion() {
     return { error: true, mensaje: "Error en cerrarSesion: " + error.message };
   }
 }
+
 
 /************** VALIDACIÓN AUTOMÁTICA DE ENTRADA/SALIDA **************/
 function verificarEntradaSinSalida() {
@@ -753,64 +766,74 @@ function validarHorario(tipoEvento) {
 }
 
 function obtenerValidacionHorario(tipoEvento) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hojaHorarios = ss.getSheetByName("Horarios");
-  const horarios = hojaHorarios.getDataRange().getValues();
-  const timeZone = ss.getSpreadsheetTimeZone();
-  const now = new Date();
-  const dias = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sábado"];
-  const diaSemana = dias[now.getDay()];
-  let horaPermitida = null;
-  let toleranciaMin = 0;
-  
-  for (let i = 1; i < horarios.length; i++) {
-    if (horarios[i][0].toString().toLowerCase() === diaSemana.toLowerCase()) {
-      if (tipoEvento === "Entrada") {
-        horaPermitida = horarios[i][1];
-      } else if (tipoEvento === "Salida") {
-        horaPermitida = horarios[i][2];
-      }
-      toleranciaMin = parseInt(horarios[i][5]) || 0;
-      break;
-    }
+  const hojaHorarios = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Horarios");
+  const hoy = new Date();
+  const dia = hoy.toLocaleDateString("es-PE", { weekday: "long" }).toLowerCase(); // lunes, martes, etc.
+  const fila = hojaHorarios.getDataRange().getValues().find(f => f[0].toString().toLowerCase() === dia);
+
+  if (!fila) {
+    return { permitido: false, mensaje: "No se encontró horario configurado para hoy." };
   }
-  if (!horaPermitida) {
-    return { permitido: false, mensaje: `No hay horario configurado para ${diaSemana}.` };
+
+  const ahora = new Date();
+  const horaActual = ahora.getHours();
+  const minutosActual = ahora.getMinutes();
+  const minutosAhora = horaActual * 60 + minutosActual;
+
+  const timeZone = Session.getScriptTimeZone();
+  let horaPermitida;
+  let tolerancia = 0;
+
+  if (tipoEvento === "Entrada") {
+    horaPermitida = fila[1]; // Hora ingreso
+    tolerancia = parseInt(fila[5]) || 0;
+  } else if (tipoEvento === "Salida") {
+    horaPermitida = fila[2]; // Hora salida
+  } else {
+    return { permitido: true, mensaje: "Evento válido." };
   }
+
+  // Convertir horaPermitida a formato HH:mm sin importar el tipo
   if (horaPermitida instanceof Date) {
     horaPermitida = Utilities.formatDate(horaPermitida, timeZone, "HH:mm");
+  } else if (typeof horaPermitida === "number") {
+    const totalMinutes = Math.round(horaPermitida * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    horaPermitida = Utilities.formatString("%02d:%02d", hours, minutes);
+  } else if (typeof horaPermitida !== "string") {
+    horaPermitida = "00:00";
   }
-  const horaActual = now.getHours() + now.getMinutes() / 60;
-  const [h, m] = horaPermitida.toString().split(":");
-  const horaEsperada = parseInt(h) + ((parseInt(m) || 0) / 60);
-  const horaLimite = horaEsperada + (toleranciaMin / 60);
-  
+
+  const [h, m] = horaPermitida.split(":").map(Number);
+  const minutosPermitidos = h * 60 + m;
+
   if (tipoEvento === "Entrada") {
-    const margenAnticipado = 15 / 60;
-    const horaMinima = horaEsperada - margenAnticipado;
-    if (horaActual < horaMinima) {
-      const minutosFaltantes = Math.round((horaMinima - horaActual) * 60);
+    const margenPermitido = minutosPermitidos + tolerancia;
+    if (minutosAhora <= margenPermitido) {
+      return { permitido: true, mensaje: "Entrada registrada dentro del horario permitido." };
+    } else {
       return {
         permitido: false,
-        mensaje: `Aún no puedes marcar. Espera ${minutosFaltantes} minuto(s) más (desde las ${Utilities.formatDate(new Date(now.getTime() + minutosFaltantes * 60000), timeZone, "HH:mm")}).`
+        mensaje: `⛔ Entrada no permitida. Superaste el límite (${horaPermitida} + ${tolerancia} min).`
       };
     }
-    if (horaActual > horaLimite) {
-      const minutosTarde = Math.round((horaActual - horaEsperada) * 60);
+  } else if (tipoEvento === "Salida") {
+    if (minutosAhora >= minutosPermitidos) {
+      return { permitido: true, mensaje: "Salida registrada correctamente." };
+    } else {
+      const diferencia = minutosPermitidos - minutosAhora;
       return {
-        permitido: false,
-        mensaje: `Llegaste con ${minutosTarde} minuto(s) de retraso respecto al horario permitido (${horaPermitida} + ${toleranciaMin} min).`
+        permitido: true,
+        mensaje: `⚠️ ¿Estás seguro de marcar tu salida? Estás saliendo ${diferencia} minutos antes.`
       };
     }
   }
-  if (tipoEvento === "Salida" && horaActual < horaEsperada) {
-    return {
-      permitido: "confirm",
-      mensaje: `Aún no es hora de salida (normalmente a las ${horaPermitida}). ¿Deseas marcar la salida antes de lo establecido?`
-    };
-  }
-  return { permitido: true };
+
+  return { permitido: true, mensaje: "Evento válido." };
 }
+
+
 
 function obtenerFraseMotivacional(tipoFrase) {
   try {
@@ -1095,4 +1118,5 @@ function getFotoBase64(fileId) {
     return null;
   }
 }
+
 
