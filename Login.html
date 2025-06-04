@@ -1612,55 +1612,122 @@
         }
       }
       
-      function capturarFotoYRegistrar() {
-        const video = document.getElementById("video");
-        if (!video) return;
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0);
-        canvas.toBlob(function(blob) {
-          const reader = new FileReader();
-          reader.onloadend = function() {
-            const base64Img = reader.result.split(',')[1];
-            if (!ubicacionActual || ubicacionActual === "No disponible" || ubicacionActual === "No soportado") {
-              showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
-              stopCamera();
-              return;
-            }
-            const tipoEvento = tipoEventoPendiente;
-            if (!tipoEvento) {
-              showFancyAlert("No se definió el tipo de evento (Entrada/Salida).");
-              stopCamera();
-              return;
-            }
-            google.script.run
-              .withSuccessHandler(function(respuesta) {
-                if (respuesta.permitido === true) {
-                  verificarGeoballaYRegistrar(base64Img, ubicacionActual, tipoEvento);
-                } else if (respuesta.permitido === "confirm") {
-                  showFancyConfirm(
-                    respuesta.mensaje,
-                    function() {
-                      verificarGeoballaYRegistrar(base64Img, ubicacionActual, tipoEvento);
-                    },
-                    function() {
-                      stopCamera();
-                    }
-                  );
-                } else {
-                  showFancyAlert(respuesta.mensaje);
-                  stopCamera();
-                }
-              })
-              .withFailureHandler(handleError)
-              .validarHorario(tipoEvento);
-          };
-          reader.readAsDataURL(blob);
-        }, 'image/jpeg');
+function capturarFotoYRegistrar() {
+  const video = document.getElementById("video");
+  if (!video) return;
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+
+  canvas.toBlob(function(blob) {
+    stopCamera(); // Apaga la cámara apenas toma la foto
+    mostrarRegistrandoSpinner(); // Muestra el spinner de "Registrando..."
+
+    const reader = new FileReader();
+    reader.onloadend = function() {
+      const base64Img = reader.result.split(',')[1];
+      if (!ubicacionActual || ubicacionActual === "No disponible" || ubicacionActual === "No soportado") {
+        ocultarRegistrandoSpinner();
+        showFancyAlert("No se pudo capturar la ubicación GPS. Asegúrate de tener el GPS activado.");
+        return;
       }
-      
+      const tipoEvento = tipoEventoPendiente;
+      if (!tipoEvento) {
+        ocultarRegistrandoSpinner();
+        showFancyAlert("No se definió el tipo de evento (Entrada/Salida).");
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(respuesta) {
+          if (respuesta.permitido === true) {
+            verificarGeoballaYRegistrarYCerrarSpinner(base64Img, ubicacionActual, tipoEvento);
+          } else if (respuesta.permitido === "confirm") {
+            showFancyConfirm(
+              respuesta.mensaje,
+              function() { verificarGeoballaYRegistrarYCerrarSpinner(base64Img, ubicacionActual, tipoEvento); },
+              function() { ocultarRegistrandoSpinner(); }
+            );
+          } else {
+            ocultarRegistrandoSpinner();
+            showFancyAlert(respuesta.mensaje);
+          }
+        })
+        .withFailureHandler(function(error) {
+          ocultarRegistrandoSpinner();
+          handleError(error);
+        })
+        .validarHorario(tipoEvento);
+    };
+    reader.readAsDataURL(blob);
+  }, 'image/jpeg');
+}
+
+// --- Esta función es igual que la tuya, pero ahora cierra el spinner SIEMPRE ---
+function verificarGeoballaYRegistrarYCerrarSpinner(base64Img, ubicacion, tipoEvento) {
+  google.script.run
+    .withSuccessHandler(function(geoResult) {
+      if (!geoResult || !geoResult.dentro) {
+        const msg = geoResult
+          ? `Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`
+          : "No se encontró ninguna zona geográfica autorizada para marcar.";
+        ocultarRegistrandoSpinner();
+        showFancyAlert(msg);
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(resFinal) {
+          ocultarRegistrandoSpinner();  // ¡Aquí se cierra el spinner!
+          showFancyAlert(resFinal.mensaje);
+          cargarMarcacionesHoy();
+        })
+        .withFailureHandler(function(error) {
+          ocultarRegistrandoSpinner();
+          handleError(error);
+        })
+        .subirYRegistrarAsistencia(base64Img, ubicacion, tipoEvento);
+    })
+    .withFailureHandler(function(error) {
+      ocultarRegistrandoSpinner();
+      handleError(error);
+    })
+    .verificarGeoballa(ubicacion);
+}
+
+
+// Modifica también la función que registra la asistencia para ocultar el spinner cuando termine:
+function verificarGeoballaYRegistrar(base64Img, ubicacion, tipoEvento) {
+  google.script.run
+    .withSuccessHandler(function(geoResult) {
+      if (!geoResult || !geoResult.dentro) {
+        ocultarRegistrandoSpinner();
+        const msg = geoResult
+          ? `Estás a ${geoResult.distancia} metros de "${geoResult.lugar}".\nRadio permitido: ${geoResult.radio} m.\nNo puedes marcar asistencia.`
+          : "No se encontró ninguna zona geográfica autorizada para marcar.";
+        showFancyAlert(msg);
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(resFinal) {
+          ocultarRegistrandoSpinner();
+          showFancyAlert(resFinal.mensaje);
+          cargarMarcacionesHoy();
+        })
+        .withFailureHandler(function(error) {
+          ocultarRegistrandoSpinner();
+          handleError(error);
+        })
+        .subirYRegistrarAsistencia(base64Img, ubicacion, tipoEvento);
+    })
+    .withFailureHandler(function(error) {
+      ocultarRegistrandoSpinner();
+      handleError(error);
+    })
+    .verificarGeoballa(ubicacion);
+}
+
+
       function verificarGeoballaYRegistrar(base64Img, ubicacion, tipoEvento) {
         google.script.run
           .withSuccessHandler(function(geoResult) {
@@ -3206,7 +3273,32 @@ function actualizarTablaGeneral() {
     filtrarReporteGeneral();
   }
 }
+
+function mostrarRegistrandoSpinner() {
+  document.getElementById("registrandoSpinner").style.display = "flex";
+}
+function ocultarRegistrandoSpinner() {
+  document.getElementById("registrandoSpinner").style.display = "none";
+}
+
     </script>
+
+<div id="registrandoSpinner" style="
+  display:none;
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background:rgba(255,255,255,0.8);
+  z-index:20001;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;">
+  <div style="margin-bottom:14px;">
+    <i class="fa-solid fa-gear fa-spin" style="font-size:48px; color:#e53935;"></i>
+  </div>
+  <div style="color:#e53935; font-size:20px; font-weight:bold;">
+    Registrando...
+  </div>
+</div>
+
   </body>
 </html>
-
